@@ -1,0 +1,42 @@
+// JectarOne Client Portal — data model (Sprint 1).
+// Dev: SQLite. Production: switch provider to "postgresql" and set DATABASE_URL.
+// No DB-native enums (kept portable across SQLite/Postgres); roles are validated in app code.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  memberships  Membership[]
+}
+
+model Organization {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  createdAt   DateTime     @default(now())
+  memberships Membership[]
+}
+
+model Membership {
+  id             String       @id @default(cuid())
+  role           String       @default("MEMBER") // OWNER | ADMIN | MEMBER
+  createdAt      DateTime     @default(now())
+  userId         String
+  organizationId String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
