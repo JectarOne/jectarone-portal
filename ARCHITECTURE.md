@@ -19,15 +19,34 @@ static marketing site. This is the frozen architecture for Sprint 1+ (per the Ex
 ## Multi-tenancy model
 Row-level tenancy scoped by `organizationId`. A user can belong to multiple organizations via `Membership`. The session carries the active `organizationId`; every tenant-scoped query filters by it.
 
-## Data model (Sprint 1)
+## Data model
 ```
 User         id, email(unique), name, passwordHash, createdAt
 Organization id, name, slug(unique), createdAt
 Membership   id, userId → User, organizationId → Organization,
              role ("OWNER" | "ADMIN" | "MEMBER"), createdAt
              @@unique([userId, organizationId])
+
+# Sprint 2
+Assessment   id, organizationId → Organization (cascade),
+             clientName, type, status ("Draft"|"InProgress"|"Review"|"Delivered"),
+             scope?, startDate?, endDate?, leadConsultant?,
+             executiveSummary?, notes?,
+             createdById → User? (setNull), archivedAt?, createdAt, updatedAt
+             @@index([organizationId, status]), @@index([organizationId, archivedAt])
 ```
-Future sprints add: Assessment, Finding, Report (tenant-scoped by organizationId), AuditLog.
+`type` and `status` are validated strings (no DB enums → SQLite/Postgres portable + evolvable).
+The Assessment model is deliberately the anchor for future sprints: **Finding, Evidence,
+Asset, and Report** will each carry `assessmentId` (and `organizationId`) and attach without
+altering Assessment. Soft-archive via `archivedAt`; hard delete is ADMIN+ only.
+
+Future sprints add: Finding, Evidence, Asset, Report (all tenant-scoped), AuditLog.
+
+## Replacing the client-side Report Builder
+The static marketing site's `/app/` Report Builder (ephemeral, browser-only) is superseded
+**inside the portal** by DB-backed Assessments: data now persists, is multi-user, org-scoped,
+and RBAC-controlled. The public `/app/` tool stays live on the marketing site as a free
+lead-gen utility; portal users work from `/dashboard/assessments`.
 
 ## RBAC
 Roles: `OWNER > ADMIN > MEMBER`.
@@ -60,8 +79,14 @@ test/unit.test.mjs
 Functional · validated (zod) · authorized (RBAC) · responsive · accessible · documented (README/CHANGELOG) · unit-tested where logic warrants.
 
 ## Sprint plan (frozen order)
-- **Sprint 1 (this):** Auth, Organizations, Multi-tenancy, User Management. ← building now
-- Sprint 2: RBAC polish, dashboard shell, navigation, layout.
-- Sprint 3: Assessments & findings (persist the existing Report Builder).
-- Sprint 4: Reports, risk matrix, exports.
+- **Sprint 1 (done):** Auth, Organizations, Multi-tenancy, User Management.
+- **Sprint 2 (done):** Assessment Management — CRUD + archive, org-scoped, RBAC-guarded, persisted (replaces the client-side Report Builder workflow).
+- Sprint 3: Findings & Evidence (attach to Assessment).
+- Sprint 4: Assets, Reports, risk matrix, PDF export.
 - Later: notifications, audit logs, billing, API keys, developer docs.
+
+## RBAC on assessments
+- View / list: any member.
+- Create / edit / archive: MEMBER+ (consultants do the work).
+- Hard delete: ADMIN+ only (destructive).
+All actions re-load the session server-side and verify `organizationId` scope before mutating.

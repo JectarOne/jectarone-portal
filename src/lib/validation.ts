@@ -1,5 +1,36 @@
 import { z } from "zod";
 import { ROLES } from "./rbac";
+import { ASSESSMENT_TYPES, ASSESSMENT_STATUSES } from "./assessments";
+
+const optionalText = (max: number) =>
+  z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().trim().max(max).optional()
+  );
+
+const optionalDate = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+  z.coerce.date().optional()
+);
+
+export const assessmentSchema = z
+  .object({
+    clientName: z.string().trim().min(2, "Enter a client name").max(160),
+    type: z.enum(ASSESSMENT_TYPES),
+    status: z.enum(ASSESSMENT_STATUSES).default("Draft"),
+    scope: optionalText(4000),
+    startDate: optionalDate,
+    endDate: optionalDate,
+    leadConsultant: optionalText(160),
+    executiveSummary: optionalText(8000),
+    notes: optionalText(8000),
+  })
+  .refine(
+    (d) => !d.startDate || !d.endDate || d.endDate >= d.startDate,
+    { message: "End date cannot be before the start date.", path: ["endDate"] }
+  );
+
+export type AssessmentInput = z.infer<typeof assessmentSchema>;
 
 export const signupSchema = z.object({
   name: z.string().trim().min(2, "Enter your name").max(120),

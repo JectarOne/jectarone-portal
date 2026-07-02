@@ -1,6 +1,6 @@
-// JectarOne Client Portal — data model (Sprint 1).
-// Dev: SQLite. Production: switch provider to "postgresql" and set DATABASE_URL.
-// No DB-native enums (kept portable across SQLite/Postgres); roles are validated in app code.
+// JectarOne Client Portal — data model.
+// Dev: SQLite. Production: PostgreSQL (Neon). Set DATABASE_URL.
+// No DB-native enums (kept portable + evolvable); enum-like fields are validated in app code.
 
 generator client {
   provider = "prisma-client-js"
@@ -18,6 +18,7 @@ model User {
   passwordHash String
   createdAt    DateTime     @default(now())
   memberships  Membership[]
+  assessments  Assessment[] @relation("AssessmentCreatedBy")
 }
 
 model Organization {
@@ -26,6 +27,7 @@ model Organization {
   slug        String       @unique
   createdAt   DateTime     @default(now())
   memberships Membership[]
+  assessments Assessment[]
 }
 
 model Membership {
@@ -39,4 +41,39 @@ model Membership {
 
   @@unique([userId, organizationId])
   @@index([organizationId])
+}
+
+// Sprint 2 — Assessments.
+// Designed so Findings, Evidence, Assets, and Reports can attach later via
+// assessmentId foreign keys without changing this model.
+model Assessment {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  clientName       String
+  type             String       // Web | Network | Cloud | ActiveDirectory | ISO27001 | NISTCSF | Other
+  scope            String?
+  status           String       @default("Draft") // Draft | InProgress | Review | Delivered
+  startDate        DateTime?
+  endDate          DateTime?
+  leadConsultant   String?
+  executiveSummary String?
+  notes            String?
+
+  createdById      String?
+  createdBy        User?        @relation("AssessmentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  archivedAt       DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  // Future relations (Sprint 3+) will reference this model:
+  // findings  Finding[]
+  // assets    Asset[]
+  // evidence  Evidence[]
+  // reports   Report[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, archivedAt])
 }

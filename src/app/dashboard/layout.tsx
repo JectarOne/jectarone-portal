@@ -16,6 +16,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <span>JectarOne<small>Client Portal</small></span>
         </span>
         <Link className="nav-link" href="/dashboard">Overview</Link>
+        <Link className="nav-link" href="/dashboard/assessments">Assessments</Link>
         <Link className="nav-link" href="/dashboard/team">Team</Link>
         <div className="spacer" />
         <div className="whoami">

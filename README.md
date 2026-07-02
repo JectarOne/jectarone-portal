@@ -17,6 +17,14 @@ self-rolled JWT session auth (jose + bcryptjs) · zod validation · plain CSS (b
 - **User management** — add members (with role), change roles (owner), remove members; RBAC enforced server-side (`OWNER > ADMIN > MEMBER`).
 - **Dashboard shell** — sidebar nav, overview, team page.
 
+## Sprint 2 (implemented) — Assessment Management
+- Persisted, DB-backed assessments (replaces the client-side Report Builder workflow).
+- **Create / edit / archive / delete** assessments per organization.
+- Fields: client name, type (Web, Network, Cloud, Active Directory, ISO 27001, NIST CSF, Other), scope, status (Draft, In Progress, Review, Delivered), start/end dates, lead consultant, executive summary, notes.
+- Org-scoped (`organizationId`) with RBAC: MEMBER+ create/edit/archive; ADMIN+ hard delete.
+- List with status filters + archived view; dashboard metrics for active/delivered.
+- Schema designed so Findings, Evidence, Assets, and Reports attach via `assessmentId` in later sprints.
+
 ## Local development
 ```bash
 cp .env.example .env          # then edit AUTH_SECRET
