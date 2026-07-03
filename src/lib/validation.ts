@@ -32,6 +32,46 @@ export const assessmentSchema = z
 
 export type AssessmentInput = z.infer<typeof assessmentSchema>;
 
+import { SEVERITIES, FINDING_STATUSES, LIKELIHOODS, IMPACTS, ASSET_TYPES } from "./findings";
+
+const optionalNumber = (min: number, max: number) =>
+  z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.coerce.number().min(min).max(max).optional()
+  );
+
+export const findingSchema = z.object({
+  title: z.string().trim().min(3, "Enter a finding title").max(200),
+  description: optionalText(8000),
+  technicalDetails: optionalText(12000),
+  businessImpact: optionalText(6000),
+  remediation: optionalText(8000),
+  verificationSteps: optionalText(6000),
+  severity: z.enum(SEVERITIES),
+  likelihood: z.enum(LIKELIHOODS),
+  impact: z.enum(IMPACTS),
+  status: z.enum(FINDING_STATUSES).default("Open"),
+  cvssScore: optionalNumber(0, 10),
+  cvssVector: optionalText(160),
+  cwe: optionalText(40),
+  owaspCategory: optionalText(80),
+  mitreTechnique: optionalText(40),
+  affectedAsset: optionalText(300),
+  affectedAssetType: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.enum(ASSET_TYPES).optional()
+  ),
+});
+export type FindingInput = z.infer<typeof findingSchema>;
+
+export const evidenceSchema = z.object({
+  filename: z.string().trim().min(1, "Enter a filename").max(260),
+  mimeType: z.string().trim().min(1, "Enter a type").max(120),
+  sizeBytes: optionalNumber(0, 5_000_000_000),
+  note: optionalText(1000),
+});
+export type EvidenceInput = z.infer<typeof evidenceSchema>;
+
 export const signupSchema = z.object({
   name: z.string().trim().min(2, "Enter your name").max(120),
   organization: z.string().trim().min(2, "Enter an organization name").max(120),

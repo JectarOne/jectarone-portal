@@ -130,6 +130,72 @@ a:hover { text-decoration: underline; }
 
 @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
 
+/* ---- Sprint 3: findings / evidence / risk ---- */
+.grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.9rem; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.grid-2-1 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 900px) { .grid-5 { grid-template-columns: repeat(2, 1fr); } .grid-2, .grid-2-1 { grid-template-columns: 1fr; } }
+
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 0.45rem 1rem; margin: 0; }
+.kv dt { color: var(--muted); font-size: 0.85rem; }
+.kv dd { color: var(--text); margin: 0; }
+h3.sub { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0.2rem 0 0.7rem; }
+
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1.6rem 0 0.7rem; }
+.section-head h2 { font-size: 1.1rem; }
+.count { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: rgba(56,189,248,0.12); color: var(--accent); font-size: 0.78rem; font-weight: 700; }
+
+.toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
+.toolbar input, .toolbar select { border: 1px solid var(--line); border-radius: 8px; background: var(--bg-deep); color: var(--text); padding: 0.5rem 0.7rem; font: inherit; font-size: 0.88rem; }
+.toolbar input { flex: 1; min-width: 200px; }
+
+.activity { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.55rem; }
+.activity li { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: baseline; font-size: 0.88rem; border-bottom: 1px solid var(--line); padding-bottom: 0.55rem; }
+.activity li:last-child { border-bottom: 0; }
+.act-action { font-family: ui-monospace, monospace; font-size: 0.8rem; color: var(--accent); }
+.act-detail { color: var(--text); }
+.act-meta { margin-left: auto; color: var(--muted); font-size: 0.76rem; }
+
+.evidence-form .form-grid { margin-bottom: 0.6rem; }
+
+/* Severity / status / risk badges (extend base .badge) */
+.badge.sev-critical { background: rgba(239,68,68,0.16); color: #fca5a5; }
+.badge.sev-high { background: rgba(245,158,11,0.16); color: #fcd34d; }
+.badge.sev-medium { background: rgba(234,179,8,0.16); color: #fde68a; }
+.badge.sev-low { background: rgba(34,197,94,0.16); color: #86efac; }
+.badge.sev-informational { background: rgba(56,189,248,0.14); color: var(--accent); }
+
+.badge.fstatus-open { background: rgba(56,189,248,0.14); color: var(--accent); }
+.badge.fstatus-inprogress { background: rgba(234,179,8,0.16); color: #fde68a; }
+.badge.fstatus-fixed { background: rgba(34,197,94,0.16); color: #86efac; }
+.badge.fstatus-verified { background: rgba(34,197,94,0.22); color: #4ade80; }
+.badge.fstatus-acceptedrisk { background: rgba(148,163,184,0.16); color: #cbd5e1; }
+.badge.fstatus-falsepositive { background: rgba(148,163,184,0.12); color: var(--muted); }
+.badge.fstatus-archived { background: rgba(148,163,184,0.16); color: #cbd5e1; }
+
+.badge.risk-critical { background: rgba(239,68,68,0.16); color: #fca5a5; }
+.badge.risk-high { background: rgba(245,158,11,0.16); color: #fcd34d; }
+.badge.risk-medium { background: rgba(234,179,8,0.16); color: #fde68a; }
+.badge.risk-low { background: rgba(34,197,94,0.16); color: #86efac; }
+.badge.risk-verylow { background: rgba(148,163,184,0.16); color: #cbd5e1; }
+
+.sev-critical-text { color: #f87171; }
+.sev-high-text { color: #fbbf24; }
+.sev-low-text { color: #4ade80; }
+
+/* 5×5 risk matrix */
+.riskmatrix { display: grid; grid-template-columns: auto repeat(5, 1fr); gap: 3px; max-width: 420px; }
+.rm-corner { }
+.rm-axis { display: grid; place-items: center; color: var(--muted); font-size: 0.62rem; font-weight: 700; text-align: center; padding: 2px; }
+.rm-axis-y { writing-mode: vertical-rl; transform: rotate(180deg); }
+.rm-cell { aspect-ratio: 1.6; border-radius: 5px; display: grid; place-items: center; font-size: 0.8rem; font-weight: 700; color: #04121f; opacity: 0.5; }
+.rm-selected { opacity: 1; outline: 2px solid #fff; outline-offset: -1px; }
+.rm-cell.risk-critical { background: #ef4444; color: #fff; }
+.rm-cell.risk-high { background: #f59e0b; }
+.rm-cell.risk-medium { background: #eab308; }
+.rm-cell.risk-low { background: #22c55e; }
+.rm-cell.risk-verylow { background: #64748b; color: #e2e8f0; }
+
 @media (max-width: 780px) {
   .shell { grid-template-columns: 1fr; }
   .side { flex-direction: row; flex-wrap: wrap; align-items: center; }

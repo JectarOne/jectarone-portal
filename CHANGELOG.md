@@ -1,5 +1,15 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 3 — Findings & Evidence System (2026-07-02)
+- Models: `Finding` (severity/likelihood/impact/CVSS/OWASP/CWE/MITRE/asset/status, soft-archive), `Evidence` (metadata; `storageKey` reserved for future cloud storage), `ActivityLog` (audit trail, SetNull refs so it survives deletion). Indexes on organizationId/assessmentId/severity/status/createdAt/cvssScore.
+- Risk matrix: Risk = Likelihood × Impact (5×5, banded) with a rendered matrix + risk badges; severity/status colored badges.
+- Server actions (zod + RBAC + org-scope): finding create/update/archive/restore/delete (ADMIN+ delete); evidence add/remove (ownership-checked). All mutations write an activity-log entry.
+- UI: assessment page = Overview → Findings table (search/filter/sort) → Activity; finding detail with risk matrix, classification, evidence, inline edit; global `/dashboard/findings`; dashboard metrics (Open/Critical/High/Resolved/Average Risk).
+- Schema pushed to Postgres; baseline migration SQL regenerated; ERD added (`docs/ERD.md`).
+- Tests: finding enum membership, risk-matrix banding, CVSS range (8/8 passing).
+- Verified: build + TS strict + lint pass; e2e against Postgres — create finding+evidence, cross-org isolation, update, archive, cascade delete (assessment → findings + evidence), and audit-log survival with null refs all pass.
+
+
 ## Sprint 2 — Assessment Management (2026-07-02)
 - Added `Assessment` model (org-scoped; type/status as validated strings; `createdBy`, `archivedAt`, timestamps; indexes on `[organizationId, status]` and `[organizationId, archivedAt]`).
 - Server actions: create, update, archive/unarchive, delete — all zod-validated and RBAC-guarded (MEMBER+ create/edit/archive; ADMIN+ delete); every action verifies `organizationId` scope.

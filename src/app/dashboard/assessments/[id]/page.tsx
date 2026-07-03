@@ -3,26 +3,25 @@ import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hasRole } from "@/lib/rbac";
-import { statusLabel, statusClass } from "@/lib/assessments";
-import {
-  updateAssessmentAction,
-  setArchivedAction,
-  deleteAssessmentAction,
-} from "@/actions/assessments";
-import { AssessmentForm } from "../AssessmentForm";
+import { statusLabel, statusClass, typeLabel } from "@/lib/assessments";
+import { SEVERITIES, FINDING_STATUSES, severityWeight, label } from "@/lib/findings";
+import { SeverityBadge, FindingStatusBadge, RiskBadge } from "@/components/findings-ui";
+import { setArchivedAction, deleteAssessmentAction } from "@/actions/assessments";
 
-function toDateInput(d: Date | null): string {
-  return d ? new Date(d).toISOString().slice(0, 10) : "";
+function fmt(d: Date | null): string {
+  return d ? new Date(d).toISOString().slice(0, 10) : "—";
 }
 
-export default async function AssessmentDetailPage({
-  params,
+export default async function AssessmentOverviewPage({
+  params, searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ q?: string; severity?: string; status?: string; sort?: string }>;
 }) {
   const session = await getSession();
   if (!session) return null;
   const { id } = await params;
+  const sp = await searchParams;
 
   const a = await prisma.assessment.findUnique({
     where: { id },
@@ -30,8 +29,34 @@ export default async function AssessmentDetailPage({
   });
   if (!a || a.organizationId !== session.orgId) notFound();
 
+  // Findings (org + assessment scoped) with filters
+  const q = (sp.q ?? "").trim();
+  const where: Record<string, unknown> = { organizationId: session.orgId, assessmentId: id };
+  if (sp.severity && (SEVERITIES as readonly string[]).includes(sp.severity)) where.severity = sp.severity;
+  if (sp.status && (FINDING_STATUSES as readonly string[]).includes(sp.status)) where.status = sp.status;
+  if (q) {
+    where.OR = [
+      { title: { contains: q, mode: "insensitive" } },
+      { affectedAsset: { contains: q, mode: "insensitive" } },
+      { cwe: { contains: q, mode: "insensitive" } },
+    ];
+  }
+
+  let findings = await prisma.finding.findMany({ where, orderBy: { createdAt: "desc" } });
+  const sort = sp.sort ?? "newest";
+  if (sort === "oldest") findings = findings.reverse();
+  else if (sort === "severityHigh") findings.sort((x, y) => severityWeight(y.severity) - severityWeight(x.severity));
+  else if (sort === "severityLow") findings.sort((x, y) => severityWeight(x.severity) - severityWeight(y.severity));
+  else if (sort === "cvssHigh") findings.sort((x, y) => (y.cvssScore ?? -1) - (x.cvssScore ?? -1));
+
+  const activities = await prisma.activityLog.findMany({
+    where: { organizationId: session.orgId, assessmentId: id },
+    orderBy: { createdAt: "desc" },
+    take: 12,
+    include: { user: { select: { name: true } } },
+  });
+
   const canDelete = hasRole(session.role, "ADMIN");
-  const boundUpdate = updateAssessmentAction.bind(null, a.id);
 
   return (
     <>
@@ -46,10 +71,11 @@ export default async function AssessmentDetailPage({
             {a.archivedAt && <span className="status-badge status-draft">Archived</span>}
           </h1>
           <p className="muted" style={{ fontSize: "0.82rem" }}>
-            Created by {a.createdBy?.name ?? "—"} · updated {new Date(a.updatedAt).toISOString().slice(0, 10)}
+            {typeLabel(a.type)} · created by {a.createdBy?.name ?? "—"} · updated {fmt(a.updatedAt)}
           </p>
         </div>
         <div className="form-actions" style={{ marginTop: 0 }}>
+          <Link className="btn btn-secondary" href={`/dashboard/assessments/${a.id}/edit`}>Edit</Link>
           <form action={setArchivedAction}>
             <input type="hidden" name="id" value={a.id} />
             <input type="hidden" name="archive" value={a.archivedAt ? "0" : "1"} />
@@ -64,22 +90,85 @@ export default async function AssessmentDetailPage({
         </div>
       </div>
 
-      <AssessmentForm
-        action={boundUpdate}
-        submitLabel="Save changes"
-        cancelHref="/dashboard/assessments"
-        values={{
-          clientName: a.clientName,
-          type: a.type,
-          status: a.status,
-          scope: a.scope,
-          startDate: toDateInput(a.startDate),
-          endDate: toDateInput(a.endDate),
-          leadConsultant: a.leadConsultant,
-          executiveSummary: a.executiveSummary,
-          notes: a.notes,
-        }}
-      />
+      {/* Overview */}
+      <div className="card">
+        <dl className="kv">
+          <dt>Type</dt><dd>{typeLabel(a.type)}</dd>
+          <dt>Dates</dt><dd>{fmt(a.startDate)} → {fmt(a.endDate)}</dd>
+          <dt>Lead consultant</dt><dd>{a.leadConsultant ?? "—"}</dd>
+          <dt>Scope</dt><dd>{a.scope ?? "—"}</dd>
+        </dl>
+        {a.executiveSummary && (<><h3 className="sub">Executive summary</h3><p className="muted">{a.executiveSummary}</p></>)}
+        {a.notes && (<><h3 className="sub">Notes</h3><p className="muted">{a.notes}</p></>)}
+      </div>
+
+      {/* Findings */}
+      <div className="section-head">
+        <h2>Findings <span className="count">{findings.length}</span></h2>
+        <Link className="btn btn-primary" href={`/dashboard/assessments/${a.id}/findings/new`}>Add finding</Link>
+      </div>
+
+      <form className="toolbar" method="get">
+        <input type="text" name="q" defaultValue={q} placeholder="Search title, asset, CWE…" />
+        <select name="severity" defaultValue={sp.severity ?? ""}>
+          <option value="">All severities</option>
+          {SEVERITIES.map((s) => <option key={s} value={s}>{label(s)}</option>)}
+        </select>
+        <select name="status" defaultValue={sp.status ?? ""}>
+          <option value="">All statuses</option>
+          {FINDING_STATUSES.map((s) => <option key={s} value={s}>{label(s)}</option>)}
+        </select>
+        <select name="sort" defaultValue={sort}>
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="severityHigh">Highest severity</option>
+          <option value="severityLow">Lowest severity</option>
+          <option value="cvssHigh">Highest CVSS</option>
+        </select>
+        <button className="btn btn-secondary" type="submit">Apply</button>
+      </form>
+
+      <div className="card">
+        {findings.length === 0 ? (
+          <div className="empty">No findings yet. <Link href={`/dashboard/assessments/${a.id}/findings/new`}>Add the first finding</Link>.</div>
+        ) : (
+          <table className="table">
+            <thead><tr><th>Title</th><th>Severity</th><th>Risk</th><th>Status</th><th>CVSS</th><th></th></tr></thead>
+            <tbody>
+              {findings.map((f) => (
+                <tr key={f.id} className={f.archivedAt ? "archived-row" : ""}>
+                  <td><strong>{f.title}</strong>{f.affectedAsset && <div className="muted" style={{ fontSize: "0.78rem" }}>{f.affectedAsset}</div>}</td>
+                  <td><SeverityBadge severity={f.severity} /></td>
+                  <td><RiskBadge likelihood={f.likelihood} impact={f.impact} /></td>
+                  <td><FindingStatusBadge status={f.status} /></td>
+                  <td className="muted">{f.cvssScore ?? "—"}</td>
+                  <td style={{ textAlign: "right" }}>
+                    <Link className="btn btn-secondary" href={`/dashboard/assessments/${a.id}/findings/${f.id}`} style={{ padding: "0.3rem 0.65rem", fontSize: "0.8rem" }}>Open</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Activity log */}
+      <div className="section-head"><h2>Activity</h2></div>
+      <div className="card">
+        {activities.length === 0 ? (
+          <div className="empty">No activity yet.</div>
+        ) : (
+          <ul className="activity">
+            {activities.map((ev) => (
+              <li key={ev.id}>
+                <span className="act-action">{ev.action}</span>
+                {ev.detail && <span className="act-detail"> — {ev.detail}</span>}
+                <span className="act-meta">{ev.user?.name ?? "system"} · {new Date(ev.createdAt).toISOString().slice(0, 16).replace("T", " ")}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </>
   );
 }

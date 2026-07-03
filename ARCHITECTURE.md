@@ -40,7 +40,37 @@ The Assessment model is deliberately the anchor for future sprints: **Finding, E
 Asset, and Report** will each carry `assessmentId` (and `organizationId`) and attach without
 altering Assessment. Soft-archive via `archivedAt`; hard delete is ADMIN+ only.
 
-Future sprints add: Finding, Evidence, Asset, Report (all tenant-scoped), AuditLog.
+### Sprint 3 — Findings, Evidence, Activity Log
+```
+Finding      id, organizationId→Org(cascade), assessmentId→Assessment(cascade),
+             title, description?, technicalDetails?, businessImpact?, remediation?,
+             verificationSteps?, severity, likelihood, impact, cvssScore?, cvssVector?,
+             cwe?, owaspCategory?, mitreTechnique?, affectedAsset?, affectedAssetType?,
+             status, createdById→User?(setNull), archivedAt?, createdAt, updatedAt
+             @@index [org,assessment] [org,severity] [org,status] [org,createdAt] [cvssScore]
+
+Evidence     id, organizationId→Org(cascade), findingId→Finding(cascade),
+             filename, mimeType, sizeBytes?, storageKey?(reserved), note?,
+             uploadedById→User?(setNull), createdAt
+             @@index [org] [finding]
+
+ActivityLog  id, organizationId→Org(cascade), action, detail?,
+             assessmentId→Assessment?(setNull), findingId→Finding?(setNull),
+             userId→User?(setNull), createdAt
+             @@index [org,createdAt] [assessment]
+```
+- **Severity:** Critical/High/Medium/Low/Informational. **Finding status:** Open/InProgress/Fixed/Verified/AcceptedRisk/FalsePositive.
+- **Risk = Likelihood × Impact** (5×5, 1–25) banded → Critical/High/Medium/Low/VeryLow; rendered as a matrix on each finding.
+- **CVSS** base score (0–10, validated) + vector string. **OWASP/CWE/MITRE** mapping fields.
+- **Evidence** stores metadata now; `storageKey` reserved so cloud file storage attaches later with no migration.
+- **Activity log** is an append-only audit trail; it uses SetNull refs so entries survive finding/assessment deletion.
+
+Full diagram: see `docs/ERD.md`. Future sprints add: Asset, Report (tenant-scoped).
+
+### RBAC on findings & evidence
+- View: any member. Create / edit / archive / restore: MEMBER+. **Hard delete: ADMIN+.**
+- Evidence add/remove: MEMBER+ (ownership checked via `organizationId`).
+- Every action re-loads the session server-side and verifies `organizationId` (and assessment/finding ownership) before mutating.
 
 ## Replacing the client-side Report Builder
 The static marketing site's `/app/` Report Builder (ephemeral, browser-only) is superseded
@@ -81,8 +111,8 @@ Functional · validated (zod) · authorized (RBAC) · responsive · accessible �
 ## Sprint plan (frozen order)
 - **Sprint 1 (done):** Auth, Organizations, Multi-tenancy, User Management.
 - **Sprint 2 (done):** Assessment Management — CRUD + archive, org-scoped, RBAC-guarded, persisted (replaces the client-side Report Builder workflow).
-- Sprint 3: Findings & Evidence (attach to Assessment).
-- Sprint 4: Assets, Reports, risk matrix, PDF export.
+- **Sprint 3 (done):** Findings & Evidence — CRUD + archive/restore, severity/risk/CVSS/OWASP/CWE/MITRE, evidence metadata, activity log, search/filter/sort, dashboard metrics.
+- Sprint 4: Assets, Reports, PDF export.
 - Later: notifications, audit logs, billing, API keys, developer docs.
 
 ## RBAC on assessments

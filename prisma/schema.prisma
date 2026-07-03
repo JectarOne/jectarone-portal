@@ -19,15 +19,21 @@ model User {
   createdAt    DateTime     @default(now())
   memberships  Membership[]
   assessments  Assessment[] @relation("AssessmentCreatedBy")
+  findings     Finding[]    @relation("FindingCreatedBy")
+  evidence     Evidence[]   @relation("EvidenceUploadedBy")
+  activities   ActivityLog[] @relation("ActivityUser")
 }
 
 model Organization {
-  id          String       @id @default(cuid())
+  id          String        @id @default(cuid())
   name        String
-  slug        String       @unique
-  createdAt   DateTime     @default(now())
+  slug        String        @unique
+  createdAt   DateTime      @default(now())
   memberships Membership[]
   assessments Assessment[]
+  findings    Finding[]
+  evidence    Evidence[]
+  activities  ActivityLog[]
 }
 
 model Membership {
@@ -44,8 +50,6 @@ model Membership {
 }
 
 // Sprint 2 — Assessments.
-// Designed so Findings, Evidence, Assets, and Reports can attach later via
-// assessmentId foreign keys without changing this model.
 model Assessment {
   id               String       @id @default(cuid())
   organizationId   String
@@ -68,12 +72,100 @@ model Assessment {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  // Future relations (Sprint 3+) will reference this model:
-  // findings  Finding[]
-  // assets    Asset[]
-  // evidence  Evidence[]
-  // reports   Report[]
+  findings         Finding[]
+  activities       ActivityLog[]
 
   @@index([organizationId, status])
   @@index([organizationId, archivedAt])
+}
+
+// Sprint 3 — Findings.
+model Finding {
+  id               String     @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assessmentId     String
+  assessment       Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  title            String
+  description      String?
+  technicalDetails String?
+  businessImpact   String?
+  remediation      String?
+  verificationSteps String?
+
+  severity         String     @default("Medium")   // Critical | High | Medium | Low | Informational
+  likelihood       String     @default("Medium")   // VeryLow | Low | Medium | High | VeryHigh
+  impact           String     @default("Medium")   // VeryLow | Low | Medium | High | VeryHigh
+  cvssScore        Float?     // 0.0 - 10.0
+  cvssVector       String?
+
+  cwe              String?    // e.g. CWE-79
+  owaspCategory    String?    // e.g. A03 Injection
+  mitreTechnique   String?    // e.g. T1190
+  affectedAsset    String?
+  affectedAssetType String?   // Domain | URL | IP | Server | ActiveDirectory | Azure | AWS | API | MobileApp
+
+  status           String     @default("Open")     // Open | InProgress | Fixed | Verified | AcceptedRisk | FalsePositive
+
+  createdById      String?
+  createdBy        User?      @relation("FindingCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  archivedAt       DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  evidence         Evidence[]
+  activities       ActivityLog[]
+
+  @@index([organizationId, assessmentId])
+  @@index([organizationId, severity])
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+  @@index([cvssScore])
+}
+
+// Sprint 3 — Evidence (metadata; binary storage is a future integration that
+// needs no schema change — add a storageKey/url later without migration churn).
+model Evidence {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  findingId      String
+  finding        Finding      @relation(fields: [findingId], references: [id], onDelete: Cascade)
+
+  filename       String
+  mimeType       String       // screenshot/pdf/txt/json/pcap/zip etc.
+  sizeBytes      Int?
+  storageKey     String?      // reserved for future cloud storage; null for now
+  note           String?
+
+  uploadedById   String?
+  uploadedBy     User?        @relation("EvidenceUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([findingId])
+}
+
+// Sprint 3 — Activity log (audit trail). Survives finding/assessment deletion (SetNull).
+model ActivityLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  action         String       // e.g. finding.created, finding.archived, finding.deleted
+  detail         String?
+
+  assessmentId   String?
+  assessment     Assessment?  @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  findingId      String?
+  finding        Finding?     @relation(fields: [findingId], references: [id], onDelete: SetNull)
+  userId         String?
+  user           User?        @relation("ActivityUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([assessmentId])
 }

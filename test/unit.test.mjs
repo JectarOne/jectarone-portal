@@ -49,3 +49,43 @@ test("assessment date range: end must not precede start", () => {
   assert.equal(dateRangeValid("2026-02-01", null), true);
   assert.equal(dateRangeValid(null, null), true);
 });
+
+// Sprint 3 — findings enums + risk matrix (mirror of src/lib/findings.ts).
+const SEVERITIES = ["Critical", "High", "Medium", "Low", "Informational"];
+const FINDING_STATUSES = ["Open", "InProgress", "Fixed", "Verified", "AcceptedRisk", "FalsePositive"];
+const SCALE = { VeryLow: 1, Low: 2, Medium: 3, High: 4, VeryHigh: 5 };
+function riskLevel(l, i) {
+  const s = (SCALE[l] ?? 3) * (SCALE[i] ?? 3);
+  if (s >= 20) return "Critical";
+  if (s >= 12) return "High";
+  if (s >= 6) return "Medium";
+  if (s >= 3) return "Low";
+  return "VeryLow";
+}
+const cvssValid = (n) => n === undefined || (typeof n === "number" && n >= 0 && n <= 10);
+
+test("finding enum membership", () => {
+  assert.ok(SEVERITIES.includes("Critical"));
+  assert.ok(!SEVERITIES.includes("Catastrophic"));
+  assert.ok(FINDING_STATUSES.includes("AcceptedRisk"));
+  assert.ok(!FINDING_STATUSES.includes("Closed"));
+});
+
+test("risk = likelihood × impact → banded level (5×5)", () => {
+  assert.equal(riskLevel("VeryHigh", "VeryHigh"), "Critical"); // 25
+  assert.equal(riskLevel("High", "VeryHigh"), "Critical");     // 20
+  assert.equal(riskLevel("High", "High"), "High");             // 16
+  assert.equal(riskLevel("Medium", "High"), "High");           // 12
+  assert.equal(riskLevel("Medium", "Medium"), "Medium");       // 9
+  assert.equal(riskLevel("Low", "Low"), "Low");                // 4
+  assert.equal(riskLevel("VeryLow", "VeryLow"), "VeryLow");    // 1
+});
+
+test("cvss score must be within 0–10", () => {
+  assert.equal(cvssValid(9.8), true);
+  assert.equal(cvssValid(0), true);
+  assert.equal(cvssValid(10), true);
+  assert.equal(cvssValid(undefined), true);
+  assert.equal(cvssValid(10.1), false);
+  assert.equal(cvssValid(-1), false);
+});

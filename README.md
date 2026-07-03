@@ -25,6 +25,18 @@ self-rolled JWT session auth (jose + bcryptjs) · zod validation · plain CSS (b
 - List with status filters + archived view; dashboard metrics for active/delivered.
 - Schema designed so Findings, Evidence, Assets, and Reports attach via `assessmentId` in later sprints.
 
+## Sprint 3 (implemented) — Findings & Evidence
+- **Findings** per assessment: title, description, technical details, business impact, remediation, verification steps.
+- **Severity** (Critical/High/Medium/Low/Informational) + **status** (Open/In Progress/Fixed/Verified/Accepted Risk/False Positive) with colored badges.
+- **Risk matrix** — Risk = Likelihood × Impact on a 5×5 grid; rendered per finding.
+- **CVSS** base score (0–10) + vector; **OWASP / CWE / MITRE ATT&CK** mapping; **affected asset** + type.
+- **Evidence** — register file metadata (filename, MIME, size, uploader, note) per finding; storage-key reserved for future cloud upload (no schema change needed).
+- **Activity log** — audit trail (created/edited/archived/restored/deleted, evidence add/remove) with user + timestamp; survives deletion via SetNull.
+- **Search / filter / sort** — by title/asset/CWE/OWASP, severity, status; sort newest/oldest/severity/CVSS. Per-assessment and global (`/dashboard/findings`) views.
+- **Dashboard** — Open / Critical / High / Resolved findings + Average Risk.
+- RBAC: MEMBER+ create/edit/archive; **ADMIN+ delete**. All org-scoped; cross-tenant access impossible.
+- ERD: see `docs/ERD.md`.
+
 ## Local development
 ```bash
 cp .env.example .env          # then edit AUTH_SECRET
