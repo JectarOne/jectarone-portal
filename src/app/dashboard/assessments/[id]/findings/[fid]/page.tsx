@@ -6,6 +6,7 @@ import { hasRole } from "@/lib/rbac";
 import { label, FINDING_STATUSES, isClosed } from "@/lib/findings";
 import { isOverdue, daysUntilDue } from "@/lib/sla";
 import { renderMarkdown } from "@/lib/markdown";
+import { storageConfigured, presignDownload } from "@/lib/storage";
 import { SeverityBadge, FindingStatusBadge, RiskMatrix } from "@/components/findings-ui";
 import {
   updateFindingAction, setFindingArchivedAction, deleteFindingAction,
@@ -15,6 +16,7 @@ import { addEvidenceAction, deleteEvidenceAction } from "@/actions/evidence";
 import { addCommentAction, editCommentAction } from "@/actions/comments";
 import { FindingForm } from "../FindingForm";
 import { EvidenceForm } from "./EvidenceForm";
+import { EvidenceUploader } from "./EvidenceUploader";
 import { CommentForm } from "./CommentForm";
 import { CommentItem } from "./CommentItem";
 import { AcceptRiskForm } from "./AcceptRiskForm";
@@ -57,6 +59,17 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
 
   const canWrite = hasRole(session.role, "MEMBER");
   const canDelete = hasRole(session.role, "ADMIN");
+
+  // Presigned image previews (short-lived) when storage is configured.
+  const storeOn = storageConfigured();
+  const previews: Record<string, string> = {};
+  if (storeOn) {
+    for (const ev of f.evidence) {
+      if (ev.storageKey && ev.mimeType.startsWith("image/")) {
+        previews[ev.id] = await presignDownload(ev.storageKey);
+      }
+    }
+  }
   const overdue = isOverdue(f.dueDate, f.status);
   const dLeft = daysUntilDue(f.dueDate);
 
@@ -190,28 +203,51 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
       <div className="card">
         {f.evidence.length > 0 && (
           <table className="table">
-            <thead><tr><th>File</th><th>Type</th><th>Size</th><th>Added by</th>{canWrite && <th></th>}</tr></thead>
+            <thead><tr><th>File</th><th>Type</th><th>Size</th><th>Added by</th><th></th></tr></thead>
             <tbody>
               {f.evidence.map((ev) => (
                 <tr key={ev.id}>
-                  <td><strong>{ev.filename}</strong>{ev.note && <div className="muted" style={{ fontSize: "0.78rem" }}>{ev.note}</div>}</td>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- presigned, short-lived external S3 URL; next/image is impractical here */}
+                      {previews[ev.id] && <img className="evidence-thumb" src={previews[ev.id]} alt={ev.filename} />}
+                      <div>
+                        <strong>{ev.filename}</strong>
+                        {ev.note && <div className="muted" style={{ fontSize: "0.78rem" }}>{ev.note}</div>}
+                      </div>
+                    </div>
+                  </td>
                   <td className="muted">{ev.mimeType}</td>
                   <td className="muted">{fmtBytes(ev.sizeBytes)}</td>
                   <td className="muted">{ev.uploadedBy?.name ?? "—"}</td>
-                  {canWrite && (
-                    <td style={{ textAlign: "right" }}>
-                      <form action={deleteEvidenceAction}>
+                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                    {ev.storageKey && (
+                      <a className="btn btn-secondary" href={`/api/v1/evidence/${ev.id}`} target="_blank" rel="noopener noreferrer" style={{ padding: "0.25rem 0.6rem", fontSize: "0.78rem", marginRight: canWrite ? "0.4rem" : 0 }}>Download</a>
+                    )}
+                    {canWrite && (
+                      <form action={deleteEvidenceAction} style={{ display: "inline" }}>
                         <input type="hidden" name="id" value={ev.id} />
                         <button className="btn btn-danger" type="submit" style={{ padding: "0.25rem 0.6rem", fontSize: "0.78rem" }}>Remove</button>
                       </form>
-                    </td>
-                  )}
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
-        {canWrite && <div style={{ marginTop: f.evidence.length ? "1rem" : 0 }}><EvidenceForm action={boundAddEvidence} /></div>}
+        {canWrite && (
+          <div style={{ marginTop: f.evidence.length ? "1rem" : 0 }}>
+            {storeOn
+              ? <EvidenceUploader findingId={f.id} />
+              : <>
+                  <EvidenceForm action={boundAddEvidence} />
+                  <p className="muted" style={{ fontSize: "0.76rem", marginTop: "0.4rem" }}>
+                    File storage is not configured — recording metadata only. Set S3 env vars to enable real uploads.
+                  </p>
+                </>}
+          </div>
+        )}
       </div>
 
       {/* Comments */}

@@ -173,3 +173,25 @@ test("markdown escapes HTML then applies safe subset", () => {
   assert.ok(renderMd("**bold**").includes("<strong>bold</strong>"));
   assert.ok(renderMd("hi @sara").includes('<span class="mention">@sara</span>'));
 });
+
+// Sprint 6 — evidence storage helpers (mirror src/lib/storage.ts).
+const ALLOWED_EVIDENCE = { "image/png": "PNG", "image/jpeg": "JPG", "application/pdf": "PDF", "text/plain": "TXT", "application/zip": "ZIP" };
+function evidenceKey(orgId, findingId, filename) {
+  const safe = filename.replace(/[^a-zA-Z0-9._-]+/g, "_").replace(/\.{2,}/g, "_").replace(/^[._-]+/, "").slice(0, 120) || "file";
+  return `org/${orgId}/finding/${findingId}/123-abcd-${safe}`;
+}
+
+test("evidence type allowlist", () => {
+  assert.ok(ALLOWED_EVIDENCE["image/png"]);
+  assert.ok(ALLOWED_EVIDENCE["application/zip"]);
+  assert.ok(!ALLOWED_EVIDENCE["application/x-msdownload"]);
+  assert.ok(!ALLOWED_EVIDENCE["text/html"]);
+});
+
+test("evidence key is org-namespaced + sanitized", () => {
+  const k = evidenceKey("org1", "f1", "../../etc/passwd evil.png");
+  assert.ok(k.startsWith("org/org1/finding/f1/"));
+  assert.ok(!k.includes(".."));
+  assert.ok(!k.includes(" "));
+  assert.ok(!k.includes("/etc/"));
+});

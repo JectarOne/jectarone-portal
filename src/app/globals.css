@@ -220,6 +220,8 @@ h3.sub { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; c
 .linkbtn { background: none; border: 0; color: var(--accent); cursor: pointer; font: inherit; font-size: 0.78rem; padding: 0; }
 .linkbtn.danger { color: var(--danger); }
 
+.evidence-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); flex: 0 0 auto; }
+
 @media (max-width: 780px) {
   .shell { grid-template-columns: 1fr; }
   .side { flex-direction: row; flex-wrap: wrap; align-items: center; }

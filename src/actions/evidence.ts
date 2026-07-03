@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { hasRole } from "@/lib/rbac";
-import { evidenceSchema } from "@/lib/validation";
+import { evidenceSchema, evidenceUploadSchema } from "@/lib/validation";
 import { logActivity } from "@/lib/activity";
+import { storageConfigured, presignUpload, evidenceKey, ALLOWED_EVIDENCE_TYPES, MAX_EVIDENCE_BYTES } from "@/lib/storage";
 
 export type EvidenceState = { error?: string };
 
@@ -35,6 +36,7 @@ export async function addEvidenceAction(findingId: string, _prev: EvidenceState,
       mimeType: parsed.data.mimeType,
       sizeBytes: parsed.data.sizeBytes ?? null,
       note: parsed.data.note ?? null,
+      storageKey: parsed.data.storageKey ?? null,
     },
   });
   await logActivity({
@@ -42,6 +44,64 @@ export async function addEvidenceAction(findingId: string, _prev: EvidenceState,
     detail: parsed.data.filename, assessmentId: finding.assessmentId, findingId,
   });
 
+  revalidatePath(`/dashboard/assessments/${finding.assessmentId}/findings/${findingId}`);
+  return {};
+}
+
+/** Step 1 of a real file upload: validate + return a presigned PUT URL and object key. */
+export async function presignEvidenceUploadAction(
+  findingId: string,
+  input: { filename: string; contentType: string; size: number }
+): Promise<{ error: string } | { url: string; key: string }> {
+  const session = await getSession();
+  if (!session) return { error: "Not authenticated." };
+  if (!hasRole(session.role, "MEMBER")) return { error: "You do not have permission." };
+  if (!storageConfigured()) return { error: "File storage is not configured." };
+
+  const finding = await prisma.finding.findUnique({ where: { id: findingId } });
+  if (!finding || finding.organizationId !== session.orgId) return { error: "Finding not found." };
+
+  const parsed = evidenceUploadSchema.safeParse(input);
+  if (!parsed.success) return { error: "Invalid file." };
+  if (!ALLOWED_EVIDENCE_TYPES[parsed.data.contentType]) return { error: "Unsupported file type. Allowed: PNG, JPG, PDF, TXT, ZIP." };
+  if (parsed.data.size > MAX_EVIDENCE_BYTES) return { error: "File exceeds the 25 MB limit." };
+
+  const key = evidenceKey(session.orgId, findingId, parsed.data.filename);
+  const url = await presignUpload(key, parsed.data.contentType);
+  return { url, key };
+}
+
+/** Step 2: register the uploaded object's metadata (after the browser PUT succeeds). */
+export async function registerEvidenceAction(
+  findingId: string,
+  data: { filename: string; mimeType: string; sizeBytes: number; storageKey: string; note?: string }
+): Promise<EvidenceState> {
+  const session = await getSession();
+  if (!session) return { error: "Not authenticated." };
+  if (!hasRole(session.role, "MEMBER")) return { error: "You do not have permission." };
+
+  const finding = await prisma.finding.findUnique({ where: { id: findingId } });
+  if (!finding || finding.organizationId !== session.orgId) return { error: "Finding not found." };
+
+  const parsed = evidenceSchema.safeParse(data);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  // Ensure the key is inside this org's namespace (defense in depth).
+  if (!parsed.data.storageKey || !parsed.data.storageKey.startsWith(`org/${session.orgId}/`)) {
+    return { error: "Invalid storage reference." };
+  }
+
+  await prisma.evidence.create({
+    data: {
+      organizationId: session.orgId, findingId, uploadedById: session.userId,
+      filename: parsed.data.filename, mimeType: parsed.data.mimeType,
+      sizeBytes: parsed.data.sizeBytes ?? null, note: parsed.data.note ?? null,
+      storageKey: parsed.data.storageKey,
+    },
+  });
+  await logActivity({
+    organizationId: session.orgId, userId: session.userId, action: "evidence.added",
+    detail: parsed.data.filename, assessmentId: finding.assessmentId, findingId,
+  });
   revalidatePath(`/dashboard/assessments/${finding.assessmentId}/findings/${findingId}`);
   return {};
 }

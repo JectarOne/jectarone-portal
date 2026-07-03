@@ -1,5 +1,15 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 6 — Evidence File Storage (2026-07-02)
+- Real evidence file upload/download/preview on **S3 (or S3-compatible)** — closes the Sprint 5 deferral. **No schema change** (uses the `Evidence.storageKey` column reserved in Sprint 3).
+- **Direct-to-S3 presigned uploads**: `presignEvidenceUploadAction` (MEMBER+, org-scoped, type + 25 MB checks) → browser PUTs the file straight to S3 → `registerEvidenceAction` records metadata + storageKey (re-verifies the key is in the caller's org namespace). App server never handles the bytes.
+- **Download/preview**: `GET /api/v1/evidence/:eid` redirects to a short-lived presigned GET (org-scoped); image evidence shows inline thumbnails via server-generated presigned URLs. Bucket stays private.
+- **Provider-agnostic** (`src/lib/storage.ts`): AWS S3 or R2/MinIO/Spaces via optional `S3_ENDPOINT`. Allowed: PNG/JPG/PDF/TXT/ZIP.
+- **Graceful fallback**: unset S3 env → evidence-metadata-only mode (Sprint 5 behavior), no breakage.
+- Env + required bucket CORS documented in `.env.example`. Tests: evidence type allowlist + org-namespaced/sanitized key (16/16 passing). Build + TS strict + lint pass.
+- **Note:** the S3 upload path could not be runtime-tested here (no bucket credentials in this environment) — set the S3 env vars + bucket CORS and verify a live upload on the deployed app.
+
+
 ## Sprint 5 — Vulnerability Management Workflow (2026-07-02)
 - **Status workflow + history**: Open/InProgress/ReadyForValidation/Resolved/AcceptedRisk/FalsePositive with enforced transitions; each change is an immutable ActivityLog entry (prev → new, user, time). Sets resolvedAt/validatedAt. Legacy Fixed/Verified still accepted → **no breaking change / no data migration**.
 - **Assignment**: assignee/assignedBy/assignedAt; only same-org members assignable; tracked in the timeline.

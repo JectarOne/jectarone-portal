@@ -69,8 +69,15 @@ export const evidenceSchema = z.object({
   mimeType: z.string().trim().min(1, "Enter a type").max(120),
   sizeBytes: optionalNumber(0, 5_000_000_000),
   note: optionalText(1000),
+  storageKey: optionalText(400),
 });
 export type EvidenceInput = z.infer<typeof evidenceSchema>;
+
+export const evidenceUploadSchema = z.object({
+  filename: z.string().trim().min(1).max(260),
+  contentType: z.string().trim().min(1).max(120),
+  size: z.number().int().min(1),
+});
 
 export const assetSchema = z.object({
   name: z.string().trim().min(1, "Enter a name").max(200),

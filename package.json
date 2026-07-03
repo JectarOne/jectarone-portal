@@ -13,6 +13,8 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1079.0",
+    "@aws-sdk/s3-request-presigner": "^3.1079.0",
     "@prisma/client": "^6.2.1",
     "@react-pdf/renderer": "^4.5.1",
     "bcryptjs": "^2.4.3",

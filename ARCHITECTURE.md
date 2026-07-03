@@ -139,6 +139,27 @@ Evidence            + deletedAt (soft delete)
   `GET|POST /findings/:id/comments`, `GET /metrics`. Assignment / due-date / risk-acceptance /
   evidence follow the same pattern (currently driven through server actions in the UI).
 
+### Sprint 6 — Evidence file storage (S3)
+Real file upload/download/preview, using the `storageKey` column reserved on `Evidence`
+back in Sprint 3 — **no schema change**.
+- **Direct-to-S3 presigned uploads.** The browser never routes file bytes through the app
+  server: `presignEvidenceUploadAction` (server, MEMBER+, org-scoped, type + 25 MB size
+  checks) returns a short-lived presigned `PUT` URL and a tenant-namespaced key
+  (`org/{orgId}/finding/{findingId}/…`); the client PUTs the file straight to S3, then
+  `registerEvidenceAction` stores the metadata + `storageKey` (re-verifying the key is in
+  the caller's org namespace).
+- **Download / preview via presigned GET.** `GET /api/v1/evidence/:eid` (org-scoped)
+  redirects to a short-lived presigned download URL; image evidence renders inline
+  thumbnails from equally short-lived presigned URLs generated server-side at render time.
+- **Provider-agnostic.** `src/lib/storage.ts` works with AWS S3 or any S3-compatible
+  service (Cloudflare R2 / MinIO / Spaces) via an optional `S3_ENDPOINT`. Allowed types:
+  PNG, JPG, PDF, TXT, ZIP.
+- **Graceful degradation.** If the S3 env is unset (`storageConfigured()` false), the UI
+  falls back to Sprint 5's evidence-metadata-only form — nothing breaks.
+- **Security.** Bucket stays private; files are only ever reachable through short-lived
+  presigned URLs scoped by an authenticated, org-checked request. Config + required bucket
+  CORS documented in `.env.example`.
+
 ### RBAC on findings & evidence
 - View: any member. Create / edit / archive / restore: MEMBER+. **Hard delete: ADMIN+.**
 - Evidence add/remove: MEMBER+ (ownership checked via `organizationId`).
@@ -186,6 +207,7 @@ Functional · validated (zod) · authorized (RBAC) · responsive · accessible �
 - **Sprint 3 (done):** Findings & Evidence — CRUD + archive/restore, severity/risk/CVSS/OWASP/CWE/MITRE, evidence metadata, activity log, search/filter/sort, dashboard metrics.
 - **Sprint 4 (done):** Assets (formal inventory, optionally linked to findings), Reports (audit log), live PDF export via `@react-pdf/renderer`.
 - **Sprint 5 (done):** Vulnerability management workflow — status lifecycle + history, assignment, SLA/overdue, risk acceptance, comments (Markdown/soft-delete), timeline, dashboard analytics (MTTR/distributions), CLIENT read-only role, REST API.
+- **Sprint 6 (done):** Evidence file storage — direct-to-S3 presigned upload/download/preview (S3 or S3-compatible), graceful metadata-only fallback when unconfigured. Closes the Sprint 5 deferral.
 - Later: notifications, audit logs, billing, API keys, developer docs.
 
 ## RBAC on assessments

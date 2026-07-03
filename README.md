@@ -56,6 +56,13 @@ self-rolled JWT session auth (jose + bcryptjs) · zod validation · plain CSS (b
 - **Roles**: `CLIENT` (read-only) added below Security Analyst (MEMBER).
 - **REST API** under `/api/v1/` (session-auth'd, org-scoped): findings list/detail, status update, comments, dashboard metrics.
 
+## Sprint 6 (implemented) — Evidence File Storage
+- **Real file uploads** for evidence (PNG, JPG, PDF, TXT, ZIP, ≤ 25 MB), stored on **S3 or any S3-compatible service** (Cloudflare R2 / MinIO / Spaces via `S3_ENDPOINT`).
+- **Direct-to-S3** presigned `PUT` — file bytes never pass through the app server. Keys are tenant-namespaced (`org/{orgId}/…`).
+- **Download + image preview** via short-lived presigned `GET` URLs; bucket stays private.
+- **Graceful fallback**: with no S3 env set, evidence stays metadata-only (nothing breaks).
+- Configure via `S3_BUCKET` / `S3_REGION` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` (+ optional `S3_ENDPOINT`). Bucket CORS example in `.env.example`.
+
 ## Local development
 ```bash
 cp .env.example .env          # then edit AUTH_SECRET
