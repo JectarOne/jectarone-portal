@@ -81,6 +81,28 @@ test("risk = likelihood × impact → banded level (5×5)", () => {
   assert.equal(riskLevel("VeryLow", "VeryLow"), "VeryLow");    // 1
 });
 
+// Sprint 4 — asset types + severity-count aggregation (mirrors report summary logic).
+const ASSET_TYPES = ["Domain", "URL", "IP", "Server", "ActiveDirectory", "Azure", "AWS", "API", "MobileApp", "Other"];
+
+test("asset type membership", () => {
+  assert.ok(ASSET_TYPES.includes("ActiveDirectory"));
+  assert.ok(!ASSET_TYPES.includes("Laptop"));
+});
+
+function severityCounts(findings) {
+  const counts = { Critical: 0, High: 0, Medium: 0, Low: 0, Informational: 0 };
+  for (const f of findings) counts[f.severity] = (counts[f.severity] ?? 0) + 1;
+  return counts;
+}
+
+test("report severity-count aggregation", () => {
+  const findings = [
+    { severity: "Critical" }, { severity: "Critical" }, { severity: "High" }, { severity: "Low" },
+  ];
+  assert.deepEqual(severityCounts(findings), { Critical: 2, High: 1, Medium: 0, Low: 1, Informational: 0 });
+  assert.deepEqual(severityCounts([]), { Critical: 0, High: 0, Medium: 0, Low: 0, Informational: 0 });
+});
+
 test("cvss score must be within 0–10", () => {
   assert.equal(cvssValid(9.8), true);
   assert.equal(cvssValid(0), true);

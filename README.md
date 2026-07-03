@@ -37,6 +37,12 @@ self-rolled JWT session auth (jose + bcryptjs) · zod validation · plain CSS (b
 - RBAC: MEMBER+ create/edit/archive; **ADMIN+ delete**. All org-scoped; cross-tenant access impossible.
 - ERD: see `docs/ERD.md`.
 
+## Sprint 4 (implemented) — Assets, Reports & PDF Export
+- **Asset inventory** (`/dashboard/assets`) — formal, reusable assets per organization; findings can optionally link to one (in addition to the existing free-text field).
+- **PDF report export** — a branded, multi-page PDF (cover, executive summary, severity breakdown, findings table, detailed findings) generated **live** from current assessment + finding data via `@react-pdf/renderer` — no stale stored blobs.
+- **Report log** — every generation is recorded (title, finding count, who/when) and shown per-assessment; also written to the activity log.
+- RBAC unchanged pattern: MEMBER+ create/edit/archive assets and generate reports; ADMIN+ hard delete.
+
 ## Local development
 ```bash
 cp .env.example .env          # then edit AUTH_SECRET

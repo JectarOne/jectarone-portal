@@ -65,7 +65,39 @@ ActivityLog  id, organizationId→Org(cascade), action, detail?,
 - **Evidence** stores metadata now; `storageKey` reserved so cloud file storage attaches later with no migration.
 - **Activity log** is an append-only audit trail; it uses SetNull refs so entries survive finding/assessment deletion.
 
-Full diagram: see `docs/ERD.md`. Future sprints add: Asset, Report (tenant-scoped).
+Full diagram: see `docs/ERD.md`.
+
+### Sprint 4 — Assets, Reports, PDF export
+```
+Asset    id, organizationId→Org(cascade), name, type, identifier?, notes?,
+         createdById→User?(setNull), archivedAt?, createdAt, updatedAt
+         @@index [org,type] [org,archivedAt]
+         # Finding.assetId → Asset?(setNull) — purely additive; the existing
+         # free-text affectedAsset/affectedAssetType on Finding still works
+         # standalone, so this does not break Sprint 3 data.
+
+Report   id, organizationId→Org(cascade), assessmentId→Assessment(cascade),
+         title, findingCount (snapshot count), format="PDF",
+         generatedById→User?(setNull), createdAt
+         @@index [org,assessment] [org,createdAt]
+```
+- **Asset inventory**: a formal, reusable record per organization (Domain/URL/IP/Server/
+  Active Directory/Azure/AWS/API/MobileApp/Other). Findings can optionally link to one
+  via `assetId`, shown as a dropdown alongside the existing free-text field.
+- **PDF export is generated live, on demand** — not stored as a blob (no object storage
+  yet). `GET /dashboard/assessments/[id]/report` (a Route Handler, not a server action,
+  since server actions cannot stream binary responses) re-loads the assessment + its
+  non-archived findings straight from the DB, renders a branded PDF with
+  `@react-pdf/renderer` (self-consistent brand: shield mark, cover page, executive
+  summary, severity-count summary, findings table, detailed findings), and streams it
+  as `application/pdf` with `Content-Disposition: attachment`. Every generation writes
+  a `Report` audit row (title + finding count snapshot + who/when) and an ActivityLog
+  entry — the row is metadata only; the PDF itself is always regenerated fresh from
+  current data, so it can never go stale relative to what's stored.
+- RBAC: report generation requires MEMBER+ (same as viewing/editing); Asset CRUD follows
+  the same MEMBER+ create/edit/archive, ADMIN+ delete pattern as Assessments/Findings.
+
+Full diagram: see `docs/ERD.md`.
 
 ### RBAC on findings & evidence
 - View: any member. Create / edit / archive / restore: MEMBER+. **Hard delete: ADMIN+.**
@@ -112,7 +144,7 @@ Functional · validated (zod) · authorized (RBAC) · responsive · accessible �
 - **Sprint 1 (done):** Auth, Organizations, Multi-tenancy, User Management.
 - **Sprint 2 (done):** Assessment Management — CRUD + archive, org-scoped, RBAC-guarded, persisted (replaces the client-side Report Builder workflow).
 - **Sprint 3 (done):** Findings & Evidence — CRUD + archive/restore, severity/risk/CVSS/OWASP/CWE/MITRE, evidence metadata, activity log, search/filter/sort, dashboard metrics.
-- Sprint 4: Assets, Reports, PDF export.
+- **Sprint 4 (done):** Assets (formal inventory, optionally linked to findings), Reports (audit log), live PDF export via `@react-pdf/renderer`.
 - Later: notifications, audit logs, billing, API keys, developer docs.
 
 ## RBAC on assessments

@@ -31,6 +31,7 @@ function collect(formData: FormData) {
     mitreTechnique: g("mitreTechnique"),
     affectedAsset: g("affectedAsset"),
     affectedAssetType: g("affectedAssetType"),
+    assetId: g("assetId"),
   };
 }
 
@@ -52,6 +53,13 @@ async function assessmentInOrg(assessmentId: string, orgId: string) {
 async function findingInOrg(id: string, orgId: string) {
   const f = await prisma.finding.findUnique({ where: { id } });
   return f && f.organizationId === orgId ? f : null;
+}
+
+/** Validate that an optional assetId (if supplied) belongs to the caller's org. */
+async function resolveAssetId(assetId: string | undefined, orgId: string): Promise<string | null> {
+  if (!assetId) return null;
+  const asset = await prisma.asset.findUnique({ where: { id: assetId } });
+  return asset && asset.organizationId === orgId ? asset.id : null;
 }
 
 function toData(d: import("@/lib/validation").FindingInput) {
@@ -85,12 +93,14 @@ export async function createFindingAction(assessmentId: string, _prev: FindingSt
 
   const parsed = findingSchema.safeParse(collect(formData));
   if (!parsed.success) return firstError(parsed.error);
+  const assetId = await resolveAssetId(parsed.data.assetId, session.orgId);
 
   const created = await prisma.finding.create({
     data: {
       organizationId: session.orgId,
       assessmentId,
       createdById: session.userId,
+      assetId,
       ...toData(parsed.data),
     },
     select: { id: true, title: true },
@@ -113,8 +123,9 @@ export async function updateFindingAction(id: string, _prev: FindingState, formD
 
   const parsed = findingSchema.safeParse(collect(formData));
   if (!parsed.success) return firstError(parsed.error);
+  const assetId = await resolveAssetId(parsed.data.assetId, session.orgId);
 
-  await prisma.finding.update({ where: { id }, data: toData(parsed.data) });
+  await prisma.finding.update({ where: { id }, data: { ...toData(parsed.data), assetId } });
   await logActivity({
     organizationId: session.orgId, userId: session.userId, action: "finding.edited",
     detail: parsed.data.title, assessmentId: existing.assessmentId, findingId: id,

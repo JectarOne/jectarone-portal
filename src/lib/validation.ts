@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ROLES } from "./rbac";
 import { ASSESSMENT_TYPES, ASSESSMENT_STATUSES } from "./assessments";
+import { SEVERITIES, FINDING_STATUSES, LIKELIHOODS, IMPACTS, ASSET_TYPES } from "./findings";
 
 const optionalText = (max: number) =>
   z.preprocess(
@@ -32,8 +33,6 @@ export const assessmentSchema = z
 
 export type AssessmentInput = z.infer<typeof assessmentSchema>;
 
-import { SEVERITIES, FINDING_STATUSES, LIKELIHOODS, IMPACTS, ASSET_TYPES } from "./findings";
-
 const optionalNumber = (min: number, max: number) =>
   z.preprocess(
     (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
@@ -61,6 +60,7 @@ export const findingSchema = z.object({
     (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
     z.enum(ASSET_TYPES).optional()
   ),
+  assetId: optionalText(60),
 });
 export type FindingInput = z.infer<typeof findingSchema>;
 
@@ -71,6 +71,14 @@ export const evidenceSchema = z.object({
   note: optionalText(1000),
 });
 export type EvidenceInput = z.infer<typeof evidenceSchema>;
+
+export const assetSchema = z.object({
+  name: z.string().trim().min(1, "Enter a name").max(200),
+  type: z.enum(ASSET_TYPES),
+  identifier: optionalText(300),
+  notes: optionalText(4000),
+});
+export type AssetInput = z.infer<typeof assetSchema>;
 
 export const signupSchema = z.object({
   name: z.string().trim().min(2, "Enter your name").max(120),

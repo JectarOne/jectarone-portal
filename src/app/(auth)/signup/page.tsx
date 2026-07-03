@@ -14,7 +14,7 @@ export default function SignupPage() {
       <div className="auth-card">
         <span className="brand"><span className="mark">J</span><span>JectarOne<small>Client Portal</small></span></span>
         <h1>Create your organization</h1>
-        <p className="sub">You'll be the owner. You can add colleagues afterwards.</p>
+        <p className="sub">You&rsquo;ll be the owner. You can add colleagues afterwards.</p>
 
         {state.error && <div className="alert alert-error">{state.error}</div>}
 

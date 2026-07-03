@@ -22,6 +22,8 @@ model User {
   findings     Finding[]    @relation("FindingCreatedBy")
   evidence     Evidence[]   @relation("EvidenceUploadedBy")
   activities   ActivityLog[] @relation("ActivityUser")
+  assets       Asset[]      @relation("AssetCreatedBy")
+  reports      Report[]     @relation("ReportGeneratedBy")
 }
 
 model Organization {
@@ -34,6 +36,8 @@ model Organization {
   findings    Finding[]
   evidence    Evidence[]
   activities  ActivityLog[]
+  assets      Asset[]
+  reports     Report[]
 }
 
 model Membership {
@@ -74,6 +78,7 @@ model Assessment {
 
   findings         Finding[]
   activities       ActivityLog[]
+  reports          Report[]
 
   @@index([organizationId, status])
   @@index([organizationId, archivedAt])
@@ -105,6 +110,8 @@ model Finding {
   mitreTechnique   String?    // e.g. T1190
   affectedAsset    String?
   affectedAssetType String?   // Domain | URL | IP | Server | ActiveDirectory | Azure | AWS | API | MobileApp
+  assetId          String?    // optional link to a formal Asset record (Sprint 4); affectedAsset text stays for quick/free-text entry
+  asset            Asset?     @relation(fields: [assetId], references: [id], onDelete: SetNull)
 
   status           String     @default("Open")     // Open | InProgress | Fixed | Verified | AcceptedRisk | FalsePositive
 
@@ -123,6 +130,7 @@ model Finding {
   @@index([organizationId, status])
   @@index([organizationId, createdAt])
   @@index([cvssScore])
+  @@index([assetId])
 }
 
 // Sprint 3 — Evidence (metadata; binary storage is a future integration that
@@ -168,4 +176,52 @@ model ActivityLog {
 
   @@index([organizationId, createdAt])
   @@index([assessmentId])
+}
+
+// Sprint 4 — Asset inventory. Findings may optionally link to a formal Asset
+// (assetId); the free-text affectedAsset/affectedAssetType on Finding still
+// works standalone for quick entry, so this is purely additive.
+model Asset {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name           String
+  type           String       // Domain | URL | IP | Server | ActiveDirectory | Azure | AWS | API | MobileApp | Other
+  identifier     String?      // hostname / IP / URL / ARN, etc.
+  notes          String?
+
+  createdById    String?
+  createdBy      User?        @relation("AssetCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  archivedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  findings       Finding[]
+
+  @@index([organizationId, type])
+  @@index([organizationId, archivedAt])
+}
+
+// Sprint 4 — Report generation log. The PDF itself is generated on demand
+// (live) from current Assessment + Finding data rather than stored as a
+// blob (no object storage yet); this row is the audit record of each export.
+model Report {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assessmentId   String
+  assessment     Assessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  title          String
+  findingCount   Int          @default(0) // snapshot count at generation time
+  format         String       @default("PDF")
+
+  generatedById  String?
+  generatedBy    User?        @relation("ReportGeneratedBy", fields: [generatedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, assessmentId])
+  @@index([organizationId, createdAt])
 }

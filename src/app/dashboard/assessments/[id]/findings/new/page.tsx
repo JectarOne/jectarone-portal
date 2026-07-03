@@ -13,6 +13,12 @@ export default async function NewFindingPage({ params }: { params: Promise<{ id:
   const a = await prisma.assessment.findUnique({ where: { id } });
   if (!a || a.organizationId !== session.orgId) notFound();
 
+  const assets = await prisma.asset.findMany({
+    where: { organizationId: session.orgId, archivedAt: null },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+
   const bound = createFindingAction.bind(null, id);
 
   return (
@@ -26,7 +32,7 @@ export default async function NewFindingPage({ params }: { params: Promise<{ id:
           <h1>New finding</h1>
         </div>
       </div>
-      <FindingForm action={bound} submitLabel="Create finding" cancelHref={`/dashboard/assessments/${id}`} />
+      <FindingForm action={bound} submitLabel="Create finding" cancelHref={`/dashboard/assessments/${id}`} assets={assets} />
     </>
   );
 }

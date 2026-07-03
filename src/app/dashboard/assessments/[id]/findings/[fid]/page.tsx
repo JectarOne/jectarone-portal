@@ -35,6 +35,12 @@ export default async function FindingDetailPage({
   });
   if (!f || f.organizationId !== session.orgId || f.assessmentId !== id) notFound();
 
+  const assets = await prisma.asset.findMany({
+    where: { organizationId: session.orgId, archivedAt: null },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+
   const canDelete = hasRole(session.role, "ADMIN");
   const boundUpdate = updateFindingAction.bind(null, f.id);
   const boundAddEvidence = addEvidenceAction.bind(null, f.id);
@@ -133,8 +139,9 @@ export default async function FindingDetailPage({
           severity: f.severity, likelihood: f.likelihood, impact: f.impact, status: f.status,
           cvssScore: f.cvssScore, cvssVector: f.cvssVector, cwe: f.cwe,
           owaspCategory: f.owaspCategory, mitreTechnique: f.mitreTechnique,
-          affectedAsset: f.affectedAsset, affectedAssetType: f.affectedAssetType,
+          affectedAsset: f.affectedAsset, affectedAssetType: f.affectedAssetType, assetId: f.assetId,
         }}
+        assets={assets}
       />
     </>
   );

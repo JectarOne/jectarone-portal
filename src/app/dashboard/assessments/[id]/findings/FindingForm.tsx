@@ -13,16 +13,17 @@ type Values = Partial<{
   severity: string; likelihood: string; impact: string; status: string;
   cvssScore: number | null; cvssVector: string | null; cwe: string | null;
   owaspCategory: string | null; mitreTechnique: string | null;
-  affectedAsset: string | null; affectedAssetType: string | null;
+  affectedAsset: string | null; affectedAssetType: string | null; assetId: string | null;
 }>;
 
 export function FindingForm({
-  action, values = {}, submitLabel, cancelHref,
+  action, values = {}, submitLabel, cancelHref, assets = [],
 }: {
   action: (prev: FindingState, formData: FormData) => Promise<FindingState>;
   values?: Values;
   submitLabel: string;
   cancelHref: string;
+  assets?: { id: string; name: string }[];
 }) {
   const [state, formAction, pending] = useActionState(action, {} as FindingState);
   const fe = state.fieldErrors ?? {};
@@ -81,6 +82,13 @@ export function FindingForm({
           <select id="affectedAssetType" name="affectedAssetType" defaultValue={values.affectedAssetType ?? ""}>
             <option value="">—</option>
             {ASSET_TYPES.map((t) => <option key={t} value={t}>{label(t)}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="assetId">Linked asset (optional)</label>
+          <select id="assetId" name="assetId" defaultValue={values.assetId ?? ""}>
+            <option value="">— none —</option>
+            {assets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         </div>
         <div className="field">

@@ -9,7 +9,11 @@ erDiagram
     Organization ||--o{ Evidence : owns
     Organization ||--o{ ActivityLog : owns
     Assessment ||--o{ Finding : contains
+    Assessment ||--o{ Report : "generation log"
     Finding ||--o{ Evidence : has
+    Organization ||--o{ Asset : owns
+    Asset ||--o{ Finding : "linked (optional, SetNull)"
+    Organization ||--o{ Report : owns
     User ||--o{ Assessment : "created (SetNull)"
     User ||--o{ Finding : "created (SetNull)"
     User ||--o{ Evidence : "uploaded (SetNull)"
@@ -70,6 +74,22 @@ erDiagram
       string findingId FK
       string userId FK
     }
+    Asset {
+      string id PK
+      string organizationId FK
+      string name
+      string type
+      string identifier
+      datetime archivedAt
+    }
+    Report {
+      string id PK
+      string organizationId FK
+      string assessmentId FK
+      string title
+      int findingCount
+      string format
+    }
 ```
 
 ## Cascade / tenancy rules
@@ -79,3 +99,10 @@ erDiagram
 
 ## Risk model
 `Risk = Likelihood × Impact` on a 5×5 matrix (each axis VeryLow…VeryHigh → 1…5). Score 1–25 banded: ≥20 Critical, ≥12 High, ≥6 Medium, ≥3 Low, else VeryLow.
+
+## PDF reports (Sprint 4)
+`Report` rows are an **audit log only** — the PDF itself is never stored as a blob. Each
+download (`GET /dashboard/assessments/[id]/report`) re-queries current, non-archived
+findings and renders fresh via `@react-pdf/renderer`, so the export can never drift from
+what's actually in the database. `Asset` is additive: `Finding.assetId` is nullable and
+`SetNull` on delete, so removing an asset never deletes or corrupts its findings.

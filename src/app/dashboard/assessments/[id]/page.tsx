@@ -56,6 +56,13 @@ export default async function AssessmentOverviewPage({
     include: { user: { select: { name: true } } },
   });
 
+  const reports = await prisma.report.findMany({
+    where: { organizationId: session.orgId, assessmentId: id },
+    orderBy: { createdAt: "desc" },
+    take: 8,
+    include: { generatedBy: { select: { name: true } } },
+  });
+
   const canDelete = hasRole(session.role, "ADMIN");
 
   return (
@@ -149,6 +156,27 @@ export default async function AssessmentOverviewPage({
               ))}
             </tbody>
           </table>
+        )}
+      </div>
+
+      {/* Reports */}
+      <div className="section-head">
+        <h2>Reports <span className="count">{reports.length}</span></h2>
+        <a className="btn btn-primary" href={`/dashboard/assessments/${a.id}/report`}>Download PDF report</a>
+      </div>
+      <div className="card">
+        {reports.length === 0 ? (
+          <div className="empty">No reports generated yet — the PDF is built live from the current findings.</div>
+        ) : (
+          <ul className="activity">
+            {reports.map((r) => (
+              <li key={r.id}>
+                <span className="act-detail">{r.title}</span>
+                <span className="muted" style={{ fontSize: "0.78rem" }}>{r.findingCount} finding(s)</span>
+                <span className="act-meta">{r.generatedBy?.name ?? "—"} · {new Date(r.createdAt).toISOString().slice(0, 16).replace("T", " ")}</span>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
