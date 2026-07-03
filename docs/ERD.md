@@ -11,9 +11,12 @@ erDiagram
     Assessment ||--o{ Finding : contains
     Assessment ||--o{ Report : "generation log"
     Finding ||--o{ Evidence : has
+    Finding ||--o{ FindingComment : has
+    User ||--o{ Finding : "assigned (SetNull)"
     Organization ||--o{ Asset : owns
     Asset ||--o{ Finding : "linked (optional, SetNull)"
     Organization ||--o{ Report : owns
+    Organization ||--o{ FindingComment : owns
     User ||--o{ Assessment : "created (SetNull)"
     User ||--o{ Finding : "created (SetNull)"
     User ||--o{ Evidence : "uploaded (SetNull)"
@@ -52,11 +55,24 @@ erDiagram
       string assessmentId FK
       string title
       string severity
-      string likelihood
-      string impact
-      float cvssScore
       string status
+      float cvssScore
+      string assigneeId FK
+      datetime dueDate
+      string acceptedRiskReason
+      datetime acceptedRiskUntil
+      datetime resolvedAt
+      datetime validatedAt
       datetime archivedAt
+    }
+    FindingComment {
+      string id PK
+      string organizationId FK
+      string findingId FK
+      string body
+      string authorId FK
+      datetime editedAt
+      datetime deletedAt
     }
     Evidence {
       string id PK

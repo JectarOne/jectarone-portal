@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ROLES } from "./rbac";
 import { ASSESSMENT_TYPES, ASSESSMENT_STATUSES } from "./assessments";
-import { SEVERITIES, FINDING_STATUSES, LIKELIHOODS, IMPACTS, ASSET_TYPES } from "./findings";
+import { SEVERITIES, FINDING_STATUSES, ALL_STATUSES, LIKELIHOODS, IMPACTS, ASSET_TYPES } from "./findings";
 
 const optionalText = (max: number) =>
   z.preprocess(
@@ -49,7 +49,7 @@ export const findingSchema = z.object({
   severity: z.enum(SEVERITIES),
   likelihood: z.enum(LIKELIHOODS),
   impact: z.enum(IMPACTS),
-  status: z.enum(FINDING_STATUSES).default("Open"),
+  status: z.enum(ALL_STATUSES).default("Open"),
   cvssScore: optionalNumber(0, 10),
   cvssVector: optionalText(160),
   cwe: optionalText(40),
@@ -79,6 +79,34 @@ export const assetSchema = z.object({
   notes: optionalText(4000),
 });
 export type AssetInput = z.infer<typeof assetSchema>;
+
+// Sprint 5 — workflow schemas.
+const optionalDateField = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+  z.coerce.date().optional()
+);
+
+export const statusChangeSchema = z.object({
+  status: z.enum(FINDING_STATUSES),
+});
+
+export const assignSchema = z.object({
+  assigneeId: optionalText(60), // empty string = unassign
+});
+
+export const dueDateSchema = z.object({
+  dueDate: optionalDateField,
+});
+
+export const acceptRiskSchema = z.object({
+  reason: z.string().trim().min(5, "A business justification is required").max(4000),
+  until: optionalDateField,
+});
+
+export const commentSchema = z.object({
+  body: z.string().trim().min(1, "Comment cannot be empty").max(8000),
+});
+export type CommentInput = z.infer<typeof commentSchema>;
 
 export const signupSchema = z.object({
   name: z.string().trim().min(2, "Enter your name").max(120),

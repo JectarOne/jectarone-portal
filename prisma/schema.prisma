@@ -19,11 +19,14 @@ model User {
   createdAt    DateTime     @default(now())
   memberships  Membership[]
   assessments  Assessment[] @relation("AssessmentCreatedBy")
-  findings     Finding[]    @relation("FindingCreatedBy")
-  evidence     Evidence[]   @relation("EvidenceUploadedBy")
-  activities   ActivityLog[] @relation("ActivityUser")
-  assets       Asset[]      @relation("AssetCreatedBy")
-  reports      Report[]     @relation("ReportGeneratedBy")
+  findings         Finding[]        @relation("FindingCreatedBy")
+  evidence         Evidence[]       @relation("EvidenceUploadedBy")
+  activities       ActivityLog[]    @relation("ActivityUser")
+  assets           Asset[]          @relation("AssetCreatedBy")
+  reports          Report[]         @relation("ReportGeneratedBy")
+  assignedFindings Finding[]        @relation("FindingAssignee")
+  acceptedFindings Finding[]        @relation("FindingAcceptedBy")
+  comments         FindingComment[] @relation("CommentAuthor")
 }
 
 model Organization {
@@ -38,6 +41,7 @@ model Organization {
   activities  ActivityLog[]
   assets      Asset[]
   reports     Report[]
+  comments    FindingComment[]
 }
 
 model Membership {
@@ -113,10 +117,33 @@ model Finding {
   assetId          String?    // optional link to a formal Asset record (Sprint 4); affectedAsset text stays for quick/free-text entry
   asset            Asset?     @relation(fields: [assetId], references: [id], onDelete: SetNull)
 
-  status           String     @default("Open")     // Open | InProgress | Fixed | Verified | AcceptedRisk | FalsePositive
+  // Sprint 5 workflow: Open | InProgress | ReadyForValidation | Resolved | AcceptedRisk | FalsePositive
+  // (legacy Sprint 3 values Fixed/Verified are still accepted and treated as closed for backward compatibility)
+  status           String     @default("Open")
 
   createdById      String?
   createdBy        User?      @relation("FindingCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  // Sprint 5 — assignment
+  assigneeId       String?
+  assignee         User?      @relation("FindingAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assignedById     String?
+  assignedAt       DateTime?
+
+  // Sprint 5 — SLA
+  dueDate          DateTime?
+  slaOverridden    Boolean    @default(false)
+
+  // Sprint 5 — risk acceptance
+  acceptedRiskReason String?
+  acceptedRiskById   String?
+  acceptedRiskBy     User?    @relation("FindingAcceptedBy", fields: [acceptedRiskById], references: [id], onDelete: SetNull)
+  acceptedRiskAt     DateTime?
+  acceptedRiskUntil  DateTime?
+
+  // Sprint 5 — lifecycle timestamps
+  resolvedAt       DateTime?
+  validatedAt      DateTime?
 
   archivedAt       DateTime?
   createdAt        DateTime   @default(now())
@@ -124,11 +151,14 @@ model Finding {
 
   evidence         Evidence[]
   activities       ActivityLog[]
+  comments         FindingComment[]
 
   @@index([organizationId, assessmentId])
   @@index([organizationId, severity])
   @@index([organizationId, status])
   @@index([organizationId, createdAt])
+  @@index([organizationId, assigneeId])
+  @@index([organizationId, dueDate])
   @@index([cvssScore])
   @@index([assetId])
 }
@@ -151,9 +181,30 @@ model Evidence {
   uploadedById   String?
   uploadedBy     User?        @relation("EvidenceUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
   createdAt      DateTime     @default(now())
+  deletedAt      DateTime?    // Sprint 5 — soft delete
 
   @@index([organizationId])
   @@index([findingId])
+}
+
+// Sprint 5 — collaboration comments on a finding (soft-delete, editable, Markdown body).
+model FindingComment {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  findingId      String
+  finding        Finding      @relation(fields: [findingId], references: [id], onDelete: Cascade)
+
+  body           String       // Markdown; @mentions parsed at render
+  authorId       String?
+  author         User?        @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  editedAt       DateTime?
+  deletedAt      DateTime?    // soft delete
+  createdAt      DateTime     @default(now())
+
+  @@index([findingId, createdAt])
+  @@index([organizationId])
 }
 
 // Sprint 3 — Activity log (audit trail). Survives finding/assessment deletion (SetNull).

@@ -99,6 +99,46 @@ Report   id, organizationId→Org(cascade), assessmentId→Assessment(cascade),
 
 Full diagram: see `docs/ERD.md`.
 
+### Sprint 5 — Vulnerability Management Workflow
+```
+Finding (extended)  + status workflow (Open|InProgress|ReadyForValidation|Resolved|
+                      AcceptedRisk|FalsePositive; legacy Fixed/Verified still accepted
+                      and treated as closed — no data migration needed)
+                    + assigneeId→User?(setNull), assignedById, assignedAt
+                    + dueDate, slaOverridden (SLA auto-calc from severity)
+                    + acceptedRiskReason, acceptedRiskById→User?(setNull),
+                      acceptedRiskAt, acceptedRiskUntil
+                    + resolvedAt, validatedAt
+                    @@index [org,assigneeId] [org,dueDate]
+
+FindingComment      id, organizationId→Org(cascade), findingId→Finding(cascade),
+                    body (Markdown), authorId→User?(setNull), editedAt?, deletedAt?
+                    @@index [findingId,createdAt] [org]
+
+Evidence            + deletedAt (soft delete)
+```
+**Design decisions (to preserve Sprint 4 compatibility):**
+- The spec's `FindingActivity` (timeline) and `FindingEvidence` are served by the
+  **existing** `ActivityLog` and `Evidence` models rather than new duplicates —
+  ActivityLog already records per-finding user/action/detail/timestamp (timeline +
+  status history), and Evidence gained a `deletedAt` for soft delete. Only
+  `FindingComment` is genuinely new.
+- **Status history** is preserved as immutable `ActivityLog` entries
+  (`finding.status_changed`, `finding.severity_changed`, `finding.assigned`,
+  `finding.risk_accepted`, `comment.added`, `evidence.*`) — chronological, per finding.
+- **SLA**: `computeDueDate(severity)` (Critical 7d / High 30d / Medium 60d / Low 90d /
+  Informational none) auto-sets `dueDate` at creation and recomputes on severity change
+  unless `slaOverridden`. Overdue = due in the past AND status not closed.
+- **Status is managed only via the workflow action** (`changeStatusAction`), not the edit
+  form — so history + lifecycle timestamps (`resolvedAt`/`validatedAt`) stay correct.
+  Allowed transitions are enforced by `STATUS_TRANSITIONS`.
+- **Roles**: added `CLIENT` (rank 0, read-only) below `MEMBER` (= "Security Analyst").
+  All mutations gate at MEMBER+, so CLIENT is read-only everywhere with no per-page work.
+- **REST API** (`/api/v1/*`): session-cookie-auth'd, org-scoped JSON. Implemented:
+  `GET /findings`, `GET /findings/:id` (with timeline + comments), `POST /findings/:id/status`,
+  `GET|POST /findings/:id/comments`, `GET /metrics`. Assignment / due-date / risk-acceptance /
+  evidence follow the same pattern (currently driven through server actions in the UI).
+
 ### RBAC on findings & evidence
 - View: any member. Create / edit / archive / restore: MEMBER+. **Hard delete: ADMIN+.**
 - Evidence add/remove: MEMBER+ (ownership checked via `organizationId`).
@@ -145,6 +185,7 @@ Functional · validated (zod) · authorized (RBAC) · responsive · accessible �
 - **Sprint 2 (done):** Assessment Management — CRUD + archive, org-scoped, RBAC-guarded, persisted (replaces the client-side Report Builder workflow).
 - **Sprint 3 (done):** Findings & Evidence — CRUD + archive/restore, severity/risk/CVSS/OWASP/CWE/MITRE, evidence metadata, activity log, search/filter/sort, dashboard metrics.
 - **Sprint 4 (done):** Assets (formal inventory, optionally linked to findings), Reports (audit log), live PDF export via `@react-pdf/renderer`.
+- **Sprint 5 (done):** Vulnerability management workflow — status lifecycle + history, assignment, SLA/overdue, risk acceptance, comments (Markdown/soft-delete), timeline, dashboard analytics (MTTR/distributions), CLIENT read-only role, REST API.
 - Later: notifications, audit logs, billing, API keys, developer docs.
 
 ## RBAC on assessments

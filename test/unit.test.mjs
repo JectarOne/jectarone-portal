@@ -111,3 +111,65 @@ test("cvss score must be within 0–10", () => {
   assert.equal(cvssValid(10.1), false);
   assert.equal(cvssValid(-1), false);
 });
+
+// Sprint 5 — SLA (mirrors src/lib/sla.ts).
+const SLA_DAYS = { Critical: 7, High: 30, Medium: 60, Low: 90, Informational: null };
+const CLOSED = ["Resolved", "AcceptedRisk", "FalsePositive", "Fixed", "Verified"];
+function computeDueDate(sev, from) {
+  const d = SLA_DAYS[sev];
+  if (d == null) return null;
+  const x = new Date(from); x.setUTCDate(x.getUTCDate() + d); return x;
+}
+function overdue(due, status, now) {
+  if (!due) return false;
+  if (CLOSED.includes(status)) return false;
+  return new Date(due).getTime() < now.getTime();
+}
+
+test("SLA due date by severity", () => {
+  const base = new Date("2026-01-01T00:00:00Z");
+  assert.equal(computeDueDate("Critical", base).toISOString().slice(0, 10), "2026-01-08");
+  assert.equal(computeDueDate("High", base).toISOString().slice(0, 10), "2026-01-31");
+  assert.equal(computeDueDate("Low", base).toISOString().slice(0, 10), "2026-04-01");
+  assert.equal(computeDueDate("Informational", base), null);
+});
+
+test("overdue: past due + not closed", () => {
+  const now = new Date("2026-02-01T00:00:00Z");
+  assert.equal(overdue(new Date("2026-01-15"), "Open", now), true);
+  assert.equal(overdue(new Date("2026-01-15"), "Resolved", now), false); // closed
+  assert.equal(overdue(new Date("2026-03-01"), "Open", now), false);     // future
+  assert.equal(overdue(null, "Open", now), false);                        // no SLA
+});
+
+// Sprint 5 — status transitions (mirror STATUS_TRANSITIONS).
+const TRANSITIONS = {
+  Open: ["InProgress", "ReadyForValidation", "Resolved", "AcceptedRisk", "FalsePositive"],
+  ReadyForValidation: ["Open", "InProgress", "Resolved", "FalsePositive"],
+  Resolved: ["Open", "InProgress"],
+};
+const canTransition = (from, to) => (TRANSITIONS[from] ?? []).includes(to);
+
+test("status workflow transitions", () => {
+  assert.equal(canTransition("Open", "InProgress"), true);
+  assert.equal(canTransition("ReadyForValidation", "Resolved"), true);
+  assert.equal(canTransition("Resolved", "Open"), true);       // reopen
+  assert.equal(canTransition("ReadyForValidation", "AcceptedRisk"), false);
+});
+
+// Sprint 5 — markdown safety (mirror src/lib/markdown.ts core rules).
+function escapeHtml(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function renderMd(input) {
+  let s = escapeHtml(input);
+  s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
+  s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/(^|\s)@([a-zA-Z0-9._-]{2,40})/g, '$1<span class="mention">@$2</span>');
+  return s;
+}
+
+test("markdown escapes HTML then applies safe subset", () => {
+  assert.ok(!renderMd("<script>alert(1)</script>").includes("<script>"));
+  assert.ok(renderMd("<script>").includes("&lt;script&gt;"));
+  assert.ok(renderMd("**bold**").includes("<strong>bold</strong>"));
+  assert.ok(renderMd("hi @sara").includes('<span class="mention">@sara</span>'));
+});

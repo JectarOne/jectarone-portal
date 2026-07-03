@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import {
-  SEVERITIES, FINDING_STATUSES, LIKELIHOODS, IMPACTS, ASSET_TYPES, OWASP_CATEGORIES, label,
+  SEVERITIES, LIKELIHOODS, IMPACTS, ASSET_TYPES, OWASP_CATEGORIES, label,
 } from "@/lib/findings";
 import type { FindingState } from "@/actions/findings";
 
@@ -44,12 +44,6 @@ export function FindingForm({
           <label htmlFor="severity">Severity</label>
           <select id="severity" name="severity" defaultValue={values.severity ?? "Medium"}>
             {SEVERITIES.map((s) => <option key={s} value={s}>{label(s)}</option>)}
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="status">Status</label>
-          <select id="status" name="status" defaultValue={values.status ?? "Open"}>
-            {FINDING_STATUSES.map((s) => <option key={s} value={s}>{label(s)}</option>)}
           </select>
         </div>
         <div className="field">

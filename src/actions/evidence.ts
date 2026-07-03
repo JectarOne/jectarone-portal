@@ -53,9 +53,9 @@ export async function deleteEvidenceAction(formData: FormData): Promise<void> {
 
   // Evidence ownership: must belong to the caller's org.
   const ev = await prisma.evidence.findUnique({ where: { id }, include: { finding: true } });
-  if (!ev || ev.organizationId !== session.orgId) return;
+  if (!ev || ev.organizationId !== session.orgId || ev.deletedAt) return;
 
-  await prisma.evidence.delete({ where: { id } });
+  await prisma.evidence.update({ where: { id }, data: { deletedAt: new Date() } }); // soft delete
   await logActivity({
     organizationId: session.orgId, userId: session.userId, action: "evidence.deleted",
     detail: ev.filename, assessmentId: ev.finding.assessmentId, findingId: ev.findingId,

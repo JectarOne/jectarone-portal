@@ -1,5 +1,21 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 5 — Vulnerability Management Workflow (2026-07-02)
+- **Status workflow + history**: Open/InProgress/ReadyForValidation/Resolved/AcceptedRisk/FalsePositive with enforced transitions; each change is an immutable ActivityLog entry (prev → new, user, time). Sets resolvedAt/validatedAt. Legacy Fixed/Verified still accepted → **no breaking change / no data migration**.
+- **Assignment**: assignee/assignedBy/assignedAt; only same-org members assignable; tracked in the timeline.
+- **SLA**: `computeDueDate()` per severity (7/30/60/90 days; Informational none), auto-set on create, recomputed on severity change unless overridden; overdue detection + dashboard counters + list filter.
+- **Risk acceptance**: reason + optional expiry + acceptedBy/at; reopenable; surfaced separately on the dashboard.
+- **Comments**: new `FindingComment` model — Markdown (XSS-safe renderer), @mentions, edit + soft-delete own (ADMIN can remove any).
+- **Evidence**: added `deletedAt` (soft delete).
+- **Dashboard analytics**: Open/Closed/Overdue/Accepted/Critical/High/Average CVSS/**MTTR**/created & resolved this month + severity/status distribution bars.
+- **Roles**: added `CLIENT` (rank 0, read-only) below MEMBER (= "Security Analyst"); mutations gate at MEMBER+, so CLIENT is read-only site-wide.
+- **REST API** (`/api/v1/*`, session-auth'd, org-scoped): findings list, finding detail (+timeline+comments), status update, comments GET/POST, dashboard metrics.
+- Tests: SLA calc, overdue rule, status transitions, Markdown safety (14/14 passing). Neon synced; migration SQL regenerated.
+- **Model reuse (backward compat):** the spec's `FindingActivity`/`FindingEvidence` are served by the existing `ActivityLog`/`Evidence` (Evidence got soft delete) rather than duplicate models — Sprint 4 data untouched.
+- **Honest deferrals** (need infra/next sprint): evidence **binary upload/download/preview** (no object storage yet — metadata only); **line-chart** trends (§9 "findings over time / resolution trend") reduced to created/resolved-this-month counters + distribution bars; @mention **notifications** not delivered (mentions parsed + highlighted only); REST endpoints for assignment/timeline/evidence/risk-acceptance follow the same pattern but the UI drives those via server actions.
+- Verified: build + TS strict + lint + 14/14 tests; e2e vs Postgres (assignment, resolvedAt, accepted-risk fields, comment + evidence soft-delete filtering, cross-org isolation, timeline, cascade delete of comments/evidence) all pass.
+
+
 ## Sprint 4 — Assets, Reports & PDF Export (2026-07-02)
 - Models: `Asset` (org-scoped inventory; type/identifier/notes, soft-archive) with an
   optional, additive `Finding.assetId` link (SetNull on delete — existing free-text

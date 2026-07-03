@@ -43,6 +43,19 @@ self-rolled JWT session auth (jose + bcryptjs) · zod validation · plain CSS (b
 - **Report log** — every generation is recorded (title, finding count, who/when) and shown per-assessment; also written to the activity log.
 - RBAC unchanged pattern: MEMBER+ create/edit/archive assets and generate reports; ADMIN+ hard delete.
 
+## Sprint 5 (implemented) — Vulnerability Management Workflow
+- **Status workflow**: Open → In Progress → Ready for Validation → Resolved, plus Accepted Risk / False Positive. Transitions enforced; every change recorded (previous → new, user, time). Legacy Fixed/Verified still accepted (backward compatible).
+- **Assignment**: assign a finding to an org member (assignee/assigned-by/assigned-at, tracked in the timeline).
+- **SLA**: auto due date per severity (Critical 7d / High 30d / Medium 60d / Low 90d / Info none), manual override, overdue detection + dashboard breach counters.
+- **Risk acceptance**: justification + optional expiry, recorded with who/when; reopenable; shown separately.
+- **Comments**: Markdown (XSS-safe), @mentions, edit/soft-delete own.
+- **Evidence**: soft delete (organization-isolated). *(Binary upload/download still pending an object-storage integration — evidence is metadata for now.)*
+- **Timeline**: immutable per-finding activity log in chronological order.
+- **Dashboard**: Open / Closed / Overdue / Accepted / Critical / High / Average CVSS / MTTR / created & resolved this month, plus severity & status distribution bars.
+- **Filters**: severity, status, assignee, overdue; global search now also covers descriptions and comments.
+- **Roles**: `CLIENT` (read-only) added below Security Analyst (MEMBER).
+- **REST API** under `/api/v1/` (session-auth'd, org-scoped): findings list/detail, status update, comments, dashboard metrics.
+
 ## Local development
 ```bash
 cp .env.example .env          # then edit AUTH_SECRET

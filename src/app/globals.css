@@ -196,6 +196,30 @@ h3.sub { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; c
 .rm-cell.risk-low { background: #22c55e; }
 .rm-cell.risk-verylow { background: #64748b; color: #e2e8f0; }
 
+/* ---- Sprint 5: workflow, comments, distributions ---- */
+.inline-form { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.inline-form select, .inline-form input { border: 1px solid var(--line); border-radius: 8px; background: var(--bg-deep); color: var(--text); padding: 0.5rem 0.6rem; font: inherit; font-size: 0.88rem; }
+
+.distrow { display: grid; grid-template-columns: 110px 1fr 32px; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; }
+.distlabel { font-size: 0.82rem; color: var(--muted); }
+.distbar { background: rgba(148,163,184,0.1); border-radius: 999px; overflow: hidden; }
+.distn { text-align: right; font-weight: 700; font-size: 0.85rem; }
+
+.comment { border-top: 1px solid var(--line); padding: 0.7rem 0; }
+.comment:first-child { border-top: 0; }
+.comment-head { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.3rem; }
+.comment-meta { color: var(--muted); font-size: 0.76rem; }
+.comment-actions { margin-left: auto; display: flex; gap: 0.5rem; }
+.comment-body { font-size: 0.92rem; line-height: 1.55; }
+.comment-body code { background: var(--bg-deep); border: 1px solid var(--line); border-radius: 4px; padding: 0.05rem 0.3rem; font-size: 0.85em; }
+.comment-body .mention { color: var(--accent); font-weight: 600; }
+.comment-body a { color: var(--accent); }
+.comment-form { display: grid; gap: 0.5rem; margin-top: 0.5rem; }
+.comment-form textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-deep); color: var(--text); padding: 0.7rem 0.8rem; font: inherit; resize: vertical; }
+.comment-form button { justify-self: start; }
+.linkbtn { background: none; border: 0; color: var(--accent); cursor: pointer; font: inherit; font-size: 0.78rem; padding: 0; }
+.linkbtn.danger { color: var(--danger); }
+
 @media (max-width: 780px) {
   .shell { grid-template-columns: 1fr; }
   .side { flex-direction: row; flex-wrap: wrap; align-items: center; }

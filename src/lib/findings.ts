@@ -3,8 +3,31 @@
 export const SEVERITIES = ["Critical", "High", "Medium", "Low", "Informational"] as const;
 export type Severity = (typeof SEVERITIES)[number];
 
-export const FINDING_STATUSES = ["Open", "InProgress", "Fixed", "Verified", "AcceptedRisk", "FalsePositive"] as const;
+// Sprint 5 workflow statuses (canonical).
+export const FINDING_STATUSES = ["Open", "InProgress", "ReadyForValidation", "Resolved", "AcceptedRisk", "FalsePositive"] as const;
 export type FindingStatus = (typeof FINDING_STATUSES)[number];
+
+// Legacy Sprint 3 statuses still accepted for backward compatibility.
+export const LEGACY_STATUSES = ["Fixed", "Verified"] as const;
+export const ALL_STATUSES = [...FINDING_STATUSES, ...LEGACY_STATUSES] as const;
+
+// Statuses that count as "closed"/no longer requiring remediation (for SLA + metrics).
+export const CLOSED_STATUSES = ["Resolved", "AcceptedRisk", "FalsePositive", "Fixed", "Verified"] as const;
+export function isClosed(status: string): boolean {
+  return (CLOSED_STATUSES as readonly string[]).includes(status);
+}
+
+/** Allowed forward transitions for the workflow (both directions to Open for reopen). */
+export const STATUS_TRANSITIONS: Record<string, string[]> = {
+  Open: ["InProgress", "ReadyForValidation", "Resolved", "AcceptedRisk", "FalsePositive"],
+  InProgress: ["Open", "ReadyForValidation", "Resolved", "AcceptedRisk", "FalsePositive"],
+  ReadyForValidation: ["Open", "InProgress", "Resolved", "FalsePositive"],
+  Resolved: ["Open", "InProgress"], // reopen
+  AcceptedRisk: ["Open"], // reopen
+  FalsePositive: ["Open"], // reopen
+  Fixed: ["Open", "Resolved"], // legacy → allow normalize
+  Verified: ["Open", "Resolved"],
+};
 
 export const LIKELIHOODS = ["VeryLow", "Low", "Medium", "High", "VeryHigh"] as const;
 export type Likelihood = (typeof LIKELIHOODS)[number];
@@ -30,6 +53,7 @@ export const OWASP_CATEGORIES = [
 
 const LABELS: Record<string, string> = {
   InProgress: "In Progress",
+  ReadyForValidation: "Ready for Validation",
   AcceptedRisk: "Accepted Risk",
   FalsePositive: "False Positive",
   VeryLow: "Very Low",
