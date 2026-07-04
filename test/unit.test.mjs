@@ -195,3 +195,39 @@ test("evidence key is org-namespaced + sanitized", () => {
   assert.ok(!k.includes(" "));
   assert.ok(!k.includes("/etc/"));
 });
+
+// Sprint 7 — CVSS band (mirror of cvssBand in src/components/findings-ui.tsx).
+function cvssBand(score) {
+  if (score >= 9) return "critical";
+  if (score >= 7) return "high";
+  if (score >= 4) return "medium";
+  if (score > 0) return "low";
+  return "none";
+}
+
+test("cvss band boundaries (CVSS v3)", () => {
+  assert.equal(cvssBand(9.8), "critical");
+  assert.equal(cvssBand(9.0), "critical");
+  assert.equal(cvssBand(8.9), "high");
+  assert.equal(cvssBand(7.0), "high");
+  assert.equal(cvssBand(6.9), "medium");
+  assert.equal(cvssBand(4.0), "medium");
+  assert.equal(cvssBand(3.9), "low");
+  assert.equal(cvssBand(0.1), "low");
+  assert.equal(cvssBand(0), "none");
+});
+
+// Sprint 7 — initials (mirror of initials in src/components/nav-link.tsx).
+function initials(name) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+test("initials from display name", () => {
+  assert.equal(initials("Issam Majidi"), "IM");
+  assert.equal(initials("issam"), "IS");
+  assert.equal(initials("  Ada  Lovelace  King "), "AK");
+  assert.equal(initials(""), "?");
+});
