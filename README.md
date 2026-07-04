@@ -74,8 +74,21 @@ Sign up at `/signup` to create your first organization.
 
 ## Tests
 ```bash
-npm test    # node:test — RBAC hierarchy + slug generation
+npm test         # node:test — RBAC, validation, risk/SLA/markdown/storage,
+                 #   security headers + login-throttle logic, cvssBand, initials
+npm run test:e2e # Playwright + axe-core on /login and /signup (boots `next dev`)
 ```
+
+- **Unit** (`test/*.test.mjs`): pure-logic mirrors + `next.config` security
+  headers — no DB or browser required.
+- **E2E** (`test/e2e/*.spec.ts`): Playwright drives the public auth pages
+  (desktop + mobile) and runs `@axe-core` WCAG 2.0/2.1 A/AA checks. These pages
+  render without a database.
+- **Authenticated dashboard E2E** needs a seeded Postgres (`DATABASE_URL`) and a
+  logged-in session; run it against a staging DB — it is intentionally out of the
+  no-DB CI path here.
+
+> Chromium for Playwright: `npx playwright install chromium` (once).
 
 ## Deploy to production (Vercel + Neon Postgres)
 1. Create a Postgres database (Neon free tier works).

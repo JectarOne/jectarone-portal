@@ -1,5 +1,45 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 7 — Production Readiness & UX Polish (2026-07-04, branch `sprint-7-polish`)
+
+Accessibility, UX, and consistency pass. Each item is its own commit; `npm test`
+(23 unit) + `npm run test:e2e` (Playwright + axe on the public auth pages) pass,
+`tsc --noEmit` clean. No existing functionality or data logic changed.
+
+### Accessibility (WCAG AA)
+- Visible keyboard focus (`:focus-visible`) on buttons, links, nav, and filter
+  chips; inputs keep their existing focus ring. `prefers-reduced-motion` honored.
+- **Skip-to-content** link as the first focusable element in the dashboard shell;
+  `<main id="main">` target; sidebar wrapped in a `<nav aria-label="Primary">`.
+- Prose links (auth footer, comment bodies) underlined so they are distinguishable
+  by more than color — fixes an axe WCAG 1.4.1 contrast finding (1.19:1 link vs text).
+
+### UX / consistency
+- **Active nav highlight**: the sidebar now marks the current route (`aria-current`
+  + `.active`) — the style existed but was never applied. Initials **avatar** by
+  the signed-in user.
+- **Loading skeletons** (`loading.tsx`) for every dashboard route — overview
+  metrics/distributions and page/table skeletons — as Next Suspense fallbacks.
+- **CVSS badges** color-coded by CVSS v3 band in the findings list; **CWE/OWASP/
+  MITRE** metadata pill primitive; reusable **EmptyState** with context-aware copy.
+
+### Security (verified)
+- Re-verified: security headers + CSP, RBAC/org-scoping on every route/action,
+  S3 upload allowlist, login throttle — all intact (see Security Hardening below).
+- Fixed a CSP gap: `style-src`/`font-src` now allow the Google Fonts origins so
+  the web font is not blocked once CSP is enforced (regression-tested).
+
+### Testing
+- Playwright E2E (desktop + mobile) on `/login` and `/signup` with `@axe-core`
+  WCAG 2.0/2.1 A/AA gating; unit mirrors for `cvssBand` and `initials`.
+- Authenticated dashboard E2E still needs a seeded Postgres and is out of scope
+  for this environment (documented in README "Testing").
+
+### Deferred (not in this pass)
+- Deeper per-page work (assessment timeline visuals, evidence gallery grid,
+  asset tags/pagination, team invitations/role-management UI) — the data layer
+  already supports these; they are UI build-outs for a follow-up.
+
 ## Security Hardening (2026-07-04, branch `security-hardening`)
 
 Audit remediation on top of Sprint 6. Each fix is its own commit with tests;
