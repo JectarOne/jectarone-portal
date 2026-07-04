@@ -115,7 +115,16 @@ a:hover { text-decoration: underline; }
 .side .nav-link.active { color: #fff; background: rgba(56,189,248,0.1); }
 .side .spacer { flex: 1; }
 .side .whoami { border-top: 1px solid var(--line); padding-top: 0.9rem; margin-top: 0.6rem; font-size: 0.82rem; color: var(--muted); }
-.side .whoami strong { color: var(--text); display: block; }
+.side .whoami strong { color: var(--text); }
+.whoami-head { display: flex; align-items: center; gap: 0.55rem; margin-bottom: 0.35rem; }
+
+/* Initials avatar */
+.avatar {
+  display: inline-grid; place-items: center; flex: 0 0 auto;
+  border-radius: 999px; color: #fff; font-weight: 800; line-height: 1;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  letter-spacing: 0.02em;
+}
 
 .main { padding: 1.8rem 2rem; min-width: 0; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.6rem; }
