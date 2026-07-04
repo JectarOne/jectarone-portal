@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { SEVERITIES, FINDING_STATUSES, CLOSED_STATUSES, severityWeight, label } from "@/lib/findings";
 import { isOverdue } from "@/lib/sla";
-import { SeverityBadge, FindingStatusBadge, RiskBadge } from "@/components/findings-ui";
+import { SeverityBadge, FindingStatusBadge, CvssBadge, EmptyState } from "@/components/findings-ui";
 
 function dateStr(d: Date | null): string {
   return d ? new Date(d).toISOString().slice(0, 10) : "—";
@@ -92,7 +92,10 @@ export default async function FindingsPage({
 
       <div className="card">
         {findings.length === 0 ? (
-          <div className="empty">No findings match.</div>
+          <EmptyState
+            title="No findings match"
+            hint={q || sp.severity || sp.status || sp.assignee || sp.overdue ? "Try clearing the filters above." : "Findings you add to assessments will appear here."}
+          />
         ) : (
           <table className="table">
             <thead><tr><th>Title</th><th>Client</th><th>Severity</th><th>Status</th><th>Assignee</th><th>Due</th><th>CVSS</th></tr></thead>
@@ -110,7 +113,7 @@ export default async function FindingsPage({
                     <td><FindingStatusBadge status={f.status} /></td>
                     <td className="muted">{f.assignee?.name ?? "—"}</td>
                     <td className={od ? "sev-critical-text" : "muted"}>{dateStr(f.dueDate)}{od ? " ⚠" : ""}</td>
-                    <td className="muted">{f.cvssScore ?? "—"}</td>
+                    <td><CvssBadge score={f.cvssScore} /></td>
                   </tr>
                 );
               })}
