@@ -79,6 +79,9 @@ a:hover { text-decoration: underline; }
 .auth-card h1 { font-size: 1.5rem; margin: 1.2rem 0 0.3rem; }
 .auth-card .sub { color: var(--muted); font-size: 0.92rem; margin-bottom: 1.4rem; }
 .auth-card .foot { margin-top: 1.3rem; color: var(--muted); font-size: 0.9rem; text-align: center; }
+/* In-text links must be distinguishable by more than color (WCAG 1.4.1):
+   underline prose links so they don't rely on color contrast with body text. */
+.auth-card .foot a, .comment-body a { text-decoration: underline; text-underline-offset: 2px; }
 
 .field { display: grid; gap: 0.35rem; margin-bottom: 1rem; }
 .field label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
