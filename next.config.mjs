@@ -13,10 +13,11 @@ const csp = [
   "frame-ancestors 'none'",
   "form-action 'self'",
   "img-src 'self' data: blob: https:",
-  "style-src 'self' 'unsafe-inline'",
+  // fonts.googleapis.com serves the Inter stylesheet; gstatic serves the font files.
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "script-src 'self' 'unsafe-inline'",
   "connect-src 'self' https:",
-  "font-src 'self' data:",
+  "font-src 'self' data: https://fonts.gstatic.com",
   "upgrade-insecure-requests",
 ].join("; ");
 

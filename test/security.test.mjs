@@ -22,6 +22,8 @@ test("CSP allows S3 presigned uploads/thumbnails and Next inline bootstrap", () 
   assert.match(csp, /img-src[^;]*https:/, "thumbnails from presigned S3 GET");
   assert.match(csp, /connect-src[^;]*https:/, "browser PUT to S3");
   assert.match(csp, /script-src[^;]*'unsafe-inline'/, "Next hydration bootstrap");
+  assert.match(csp, /style-src[^;]*fonts\.googleapis\.com/, "Google Fonts stylesheet");
+  assert.match(csp, /font-src[^;]*fonts\.gstatic\.com/, "Google Fonts files");
 });
 
 test("poweredByHeader disabled and headers wired to all routes", async () => {
