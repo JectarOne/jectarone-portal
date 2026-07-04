@@ -10,16 +10,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="shell">
+      <a className="skip-link" href="#main">Skip to content</a>
       <aside className="side">
         <span className="brand" style={{ marginBottom: "1rem" }}>
           <span className="mark">J</span>
           <span>JectarOne<small>Client Portal</small></span>
         </span>
-        <Link className="nav-link" href="/dashboard">Overview</Link>
-        <Link className="nav-link" href="/dashboard/assessments">Assessments</Link>
-        <Link className="nav-link" href="/dashboard/findings">Findings</Link>
-        <Link className="nav-link" href="/dashboard/assets">Assets</Link>
-        <Link className="nav-link" href="/dashboard/team">Team</Link>
+        <nav className="side-nav" aria-label="Primary">
+          <Link className="nav-link" href="/dashboard">Overview</Link>
+          <Link className="nav-link" href="/dashboard/assessments">Assessments</Link>
+          <Link className="nav-link" href="/dashboard/findings">Findings</Link>
+          <Link className="nav-link" href="/dashboard/assets">Assets</Link>
+          <Link className="nav-link" href="/dashboard/team">Team</Link>
+        </nav>
         <div className="spacer" />
         <div className="whoami">
           <strong>{session.user.name}</strong>
@@ -29,7 +32,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </form>
         </div>
       </aside>
-      <main className="main">{children}</main>
+      <main className="main" id="main">{children}</main>
     </div>
   );
 }

@@ -17,6 +17,37 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ---- Accessibility: visible keyboard focus (WCAG 2.4.7) ---- */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* Inputs already show a focus ring via box-shadow; keep their outline subtle. */
+.field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible,
+.toolbar input:focus-visible, .toolbar select:focus-visible,
+.inline-form input:focus-visible, .inline-form select:focus-visible { outline-offset: 0; }
+/* Remove focus ring only when NOT keyboard-navigating (mouse click). */
+:focus:not(:focus-visible) { outline: none; }
+
+/* Skip link — first focusable element for keyboard/screen-reader users. */
+.skip-link {
+  position: absolute; left: 0.6rem; top: -3rem; z-index: 100;
+  background: var(--primary); color: #fff; padding: 0.55rem 0.9rem;
+  border-radius: 10px; font-weight: 700; transition: top 0.15s ease;
+}
+.skip-link:focus { top: 0.6rem; text-decoration: none; }
+
+/* Respect reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
   min-height: 100vh;
   background: radial-gradient(circle at 85% -5%, rgba(37, 99, 235, 0.12), transparent 32rem), var(--bg);
@@ -78,6 +109,7 @@ a:hover { text-decoration: underline; }
 /* Dashboard shell */
 .shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
 .side { border-right: 1px solid var(--line); background: var(--bg-deep); padding: 1.2rem 1rem; display: flex; flex-direction: column; gap: 0.3rem; }
+.side-nav { display: flex; flex-direction: column; gap: 0.3rem; }
 .side .nav-link { display: flex; align-items: center; gap: 0.6rem; color: var(--muted); padding: 0.6rem 0.7rem; border-radius: 10px; font-weight: 600; font-size: 0.92rem; }
 .side .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.03); text-decoration: none; }
 .side .nav-link.active { color: #fff; background: rgba(56,189,248,0.1); }
@@ -225,6 +257,7 @@ h3.sub { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; c
 @media (max-width: 780px) {
   .shell { grid-template-columns: 1fr; }
   .side { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .side-nav { flex-direction: row; flex-wrap: wrap; }
   .side .spacer, .side .whoami { display: none; }
   .grid-3 { grid-template-columns: 1fr; }
 }
