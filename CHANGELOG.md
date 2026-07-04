@@ -1,5 +1,55 @@
 # Changelog — JectarOne Client Portal
 
+## Security Hardening (2026-07-04, branch `security-hardening`)
+
+Audit remediation on top of Sprint 6. Each fix is its own commit with tests;
+`node --test` (all green) and `tsc --noEmit` (clean) pass. No functionality
+changed; RBAC/org-scoping/S3 flows preserved.
+
+### Fixed
+- **`M1`/`L1` (High) — security response headers.** `next.config.mjs` set no
+  security headers and leaked `X-Powered-By: Next.js`. Added a per-route header
+  set — **CSP** (`frame-ancestors 'none'` clickjacking protection, `object-src
+  'none'`, `base-uri`/`form-action 'self'`), `X-Frame-Options: DENY`,
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`,
+  `HSTS` — and `poweredByHeader: false`. CSP is tuned to keep Next's inline
+  hydration bootstrap, inline styles, and direct-to-S3 presigned upload/
+  thumbnail flows working (`img-src`/`connect-src https:`).
+- **Login brute-force (High).** Self-rolled auth had no rate limiting. Added a
+  serverless-safe `LoginAttempt` table + sliding-window throttle: per-email (5)
+  and per-IP (20) over 15 min, evaluated before any DB/bcrypt work and
+  independent of account existence (no enumeration). Failures recorded; cleared
+  on success. `src/lib/rate-limit.ts`, wired in `loginAction`.
+  **Deploy step:** run `prisma migrate deploy` (or `prisma db push`) for the new model.
+- **Signup account enumeration (Medium).** Signup revealed whether an email is
+  registered. Added a per-IP throttle so it can't be used to enumerate at scale;
+  probes count toward the IP cap. Full non-enumerable signup requires an email-
+  verification flow (see `docs/PORTAL-SECURITY-FIXES.md`).
+
+### Tests added
+- `test/security.test.mjs` — asserts the header set + values, that CSP still
+  permits S3 presigned flows and Next hydration, `poweredByHeader` off, and the
+  throttle cap + `x-forwarded-for` parsing logic.
+
+### Reviewed and found already correct (no change)
+- **JWT/session:** HS256 with explicit `algorithms` allowlist (no `alg:none`),
+  `AUTH_SECRET` length check, `httpOnly`/`secure`/`sameSite=lax` cookie, DB
+  membership re-load on every request.
+- **AuthZ / IDOR:** every API route and server action re-checks
+  `organizationId === session.orgId` and RBAC (`hasRole`) before read/mutate;
+  evidence storage keys re-verified against the org namespace.
+- **XSS:** comment Markdown renderer escapes first, then applies a closed inline
+  subset; links restricted to `http(s)`. **CSRF:** `sameSite=lax` + POST-only
+  mutations. **SSRF/upload:** S3 type + 25 MB allowlist, private bucket, short-
+  lived presigned URLs. Password hashing bcrypt (12 rounds).
+
+### Known gaps (documented, need product decisions / infra)
+- No email-verification or password-reset flow (needs a mailer) — see
+  `docs/PORTAL-SECURITY-FIXES.md`.
+- `M2` CORS `ACAO: *` was observed on the static login HTML (Vercel CDN
+  artifact), not set by any route; API routes are same-origin. Verify/remove at
+  the Vercel layer.
+
 ## Sprint 6 — Evidence File Storage (2026-07-02)
 - Real evidence file upload/download/preview on **S3 (or S3-compatible)** — closes the Sprint 5 deferral. **No schema change** (uses the `Evidence.storageKey` column reserved in Sprint 3).
 - **Direct-to-S3 presigned uploads**: `presignEvidenceUploadAction` (MEMBER+, org-scoped, type + 25 MB checks) → browser PUTs the file straight to S3 → `registerEvidenceAction` records metadata + storageKey (re-verifies the key is in the caller's org namespace). App server never handles the bytes.
