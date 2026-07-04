@@ -20,7 +20,10 @@ changed; RBAC/org-scoping/S3 flows preserved.
   and per-IP (20) over 15 min, evaluated before any DB/bcrypt work and
   independent of account existence (no enumeration). Failures recorded; cleared
   on success. `src/lib/rate-limit.ts`, wired in `loginAction`.
-  **Deploy step:** run `prisma migrate deploy` (or `prisma db push`) for the new model.
+  Shipped as migration `0002_add_login_attempt`; the Vercel build's
+  `prisma migrate deploy` applies it. A pre-existing (db-push) production DB
+  must be baselined once with `prisma migrate resolve --applied 0001_init`
+  first (P3005 fix) — see README "One-time baseline". Never `db push` in prod.
 - **Signup account enumeration (Medium).** Signup revealed whether an email is
   registered. Added a per-IP throttle so it can't be used to enumerate at scale;
   probes count toward the IP cap. Full non-enumerable signup requires an email-

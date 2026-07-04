@@ -79,10 +79,31 @@ npm test    # node:test — RBAC hierarchy + slug generation
 
 ## Deploy to production (Vercel + Neon Postgres)
 1. Create a Postgres database (Neon free tier works).
-2. In `prisma/schema.prisma`, set `datasource db { provider = "postgresql" }`.
+2. In `prisma/schema.prisma`, keep `datasource db { provider = "postgresql" }`.
 3. Set env vars on the host: `DATABASE_URL` (the Postgres URL) and a strong `AUTH_SECRET`.
-4. Run migrations: `npx prisma migrate deploy` (or `prisma db push` for the first cut).
-5. Deploy. Point `app.jectar.one` at it.
+4. The Vercel **build command runs migrations automatically**
+   (`prisma generate && prisma migrate deploy && next build`). Deploy and point
+   `app.jectar.one` at it.
+
+Migrations live in `prisma/migrations/`. **Do not use `prisma db push` in
+production** — it applies schema changes without recording history, which breaks
+`prisma migrate deploy` later (error `P3005`). `db push` is dev-only.
+
+### One-time baseline for an existing (pre-migrate) production database
+If the production DB already has tables because it was first deployed with
+`db push` (no migration history), `prisma migrate deploy` fails with **P3005**.
+Baseline it **once** — this records the initial migration as already-applied
+**without** touching data:
+
+```bash
+# Run locally (or in a one-off job) with DATABASE_URL pointed at PRODUCTION.
+# 0001_init exactly matches the existing schema, so it must NOT be re-run:
+npx prisma migrate resolve --applied 0001_init
+```
+
+After that, `prisma migrate deploy` (in the Vercel build) applies
+`0002_add_login_attempt` and every future migration normally. Run the `resolve`
+command **only once**; re-running it on an already-baselined DB errors.
 
 > `.env`, `prisma/dev.db`, and `node_modules` are gitignored. Never commit secrets.
 

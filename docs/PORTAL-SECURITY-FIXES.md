@@ -12,11 +12,19 @@ what still needs a product/infra decision.
 | Signup enumeration (per-IP throttle) | Medium | `signupAction` |
 
 ### Deploy step (required for the throttle)
-The throttle adds a `LoginAttempt` model. After deploying:
+The throttle adds a `LoginAttempt` model, shipped as migration
+`prisma/migrations/0002_add_login_attempt`. The Vercel build already runs
+`prisma migrate deploy`, so it applies automatically **once the DB is baselined**.
+
+If the production DB predates Prisma Migrate (created via `db push`),
+`migrate deploy` fails with **P3005**. Baseline it once — see the "One-time
+baseline" section in `README.md`:
 ```bash
-npx prisma migrate deploy   # or: npx prisma db push
+# with DATABASE_URL → production, run ONCE:
+npx prisma migrate resolve --applied 0001_init
 ```
-The `build` script already runs `prisma generate`.
+Then `migrate deploy` applies `0002` and all future migrations. **Never use
+`prisma db push` in production.**
 
 ### Verify headers live
 ```bash
