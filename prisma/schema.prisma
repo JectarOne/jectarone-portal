@@ -44,6 +44,21 @@ model Organization {
   comments    FindingComment[]
 }
 
+// Brute-force / credential-stuffing throttle for login (and signup).
+// Serverless-safe: shared state in the DB (per-email + per-IP counts in a
+// sliding window). Rows are pruned per-email on successful login; stale rows
+// are ignored by the windowed count query. Run `prisma migrate deploy`
+// (or `prisma db push`) after deploying this model.
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  key       String   // lowercased email the attempt targeted
+  ip        String   @default("0.0.0.0")
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+  @@index([ip, createdAt])
+}
+
 model Membership {
   id             String       @id @default(cuid())
   role           String       @default("MEMBER") // OWNER | ADMIN | MEMBER

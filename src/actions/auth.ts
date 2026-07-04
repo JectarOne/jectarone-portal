@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { setSessionCookie, clearSessionCookie } from "@/lib/auth";
 import { signupSchema, loginSchema, slugify } from "@/lib/validation";
+import { loginThrottled, recordFailedLogin, clearLoginAttempts, ipThrottled, recordAttempt } from "@/lib/rate-limit";
 
 export type ActionState = { error?: string };
 
@@ -20,8 +21,18 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
   }
   const { name, organization, email, password } = parsed.data;
 
+  // Throttle per source IP so signup cannot be used to enumerate which emails
+  // are registered at scale. (Full non-enumerable signup requires an email-
+  // verification flow — see docs/PORTAL-SECURITY-FIXES.md.)
+  if (await ipThrottled()) {
+    return { error: "Too many attempts. Please wait a few minutes and try again." };
+  }
+
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return { error: "An account with that email already exists." };
+  if (existing) {
+    await recordAttempt(email); // count probes toward the IP throttle
+    return { error: "An account with that email already exists." };
+  }
 
   // Unique slug for the organization.
   const base = slugify(organization);
@@ -52,17 +63,31 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   if (!parsed.success) return { error: "Enter a valid email and password." };
   const { email, password } = parsed.data;
 
+  // Brute-force / credential-stuffing throttle (per-email + per-IP). Applied
+  // before any DB/bcrypt work and independent of whether the account exists,
+  // so it does not leak account existence.
+  if (await loginThrottled(email)) {
+    return { error: "Too many attempts. Please wait a few minutes and try again." };
+  }
+
   const user = await prisma.user.findUnique({
     where: { email },
     include: { memberships: { orderBy: { createdAt: "asc" }, take: 1 } },
   });
   // Constant-ish failure message to avoid leaking which emails exist.
   const invalid: ActionState = { error: "Incorrect email or password." };
-  if (!user || user.memberships.length === 0) return invalid;
+  if (!user || user.memberships.length === 0) {
+    await recordFailedLogin(email);
+    return invalid;
+  }
 
   const ok = await verifyPassword(password, user.passwordHash);
-  if (!ok) return invalid;
+  if (!ok) {
+    await recordFailedLogin(email);
+    return invalid;
+  }
 
+  await clearLoginAttempts(email);
   await setSessionCookie({ uid: user.id, oid: user.memberships[0].organizationId });
   redirect("/dashboard");
 }
