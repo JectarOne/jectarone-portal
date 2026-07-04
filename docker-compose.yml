@@ -1,0 +1,27 @@
+# Local development / E2E database — mirrors production (PostgreSQL 16).
+# Usage:
+#   docker compose up -d
+#   cp .env.example .env   # then set DATABASE_URL to the line below + AUTH_SECRET
+#   npm run db:migrate && npm run db:seed
+#
+# DATABASE_URL="postgresql://portal:portal@localhost:5433/jectarone?schema=public"
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: jo-portal-pg
+    environment:
+      POSTGRES_USER: portal
+      POSTGRES_PASSWORD: portal
+      POSTGRES_DB: jectarone
+    ports:
+      - "5433:5432"
+    volumes:
+      - jo_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U portal -d jectarone"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  jo_pg_data:
