@@ -23,6 +23,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1079.0",
     "@prisma/client": "^6.2.1",
     "@react-pdf/renderer": "^4.5.1",
+    "@sentry/nextjs": "^10.63.0",
     "bcryptjs": "^2.4.3",
     "jose": "^5.9.6",
     "next": "^15.1.4",

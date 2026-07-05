@@ -25,3 +25,6 @@ Thumbs.db
 # Playwright
 test-results/
 playwright-report/
+
+# Dev email outbox (transactional email fallback)
+.mail-outbox/
