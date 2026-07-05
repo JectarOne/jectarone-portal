@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { DB_URL, AUTH_SECRET } from "./test/e2e/db-env";
+import { DB_URL, AUTH_SECRET, S3 } from "./test/e2e/db-env";
 
 // Authenticated E2E runs against a seeded Postgres (docker-compose.yml).
 // Serial (workers: 1) because specs share one mutable database; global-setup
@@ -39,6 +39,13 @@ export default defineConfig({
     env: {
       DATABASE_URL: DB_URL,
       AUTH_SECRET,
+      // S3/MinIO so the real presigned-upload path is exercised. If MinIO is not
+      // running the upload spec skips (the app falls back to metadata-only mode).
+      S3_BUCKET: S3.bucket,
+      S3_REGION: S3.region,
+      S3_ACCESS_KEY_ID: S3.accessKeyId,
+      S3_SECRET_ACCESS_KEY: S3.secretAccessKey,
+      S3_ENDPOINT: S3.endpoint,
     },
   },
 });
