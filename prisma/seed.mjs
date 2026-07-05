@@ -87,6 +87,7 @@ async function main() {
   // ---- Assessments (Northwind) ----
   const aWeb = await prisma.assessment.create({
     data: {
+      id: "nw-web", // stable id for E2E navigation / RBAC tests
       organizationId: northwind.id, clientName: "Northwind Corp", type: "Web", status: "InProgress",
       scope: "External web application and public API.", leadConsultant: "Karim Idrissi",
       executiveSummary: "Assessment of the customer-facing web application and its supporting API.",
@@ -115,7 +116,7 @@ async function main() {
 
   // Globex assessment (isolation)
   const gWeb = await prisma.assessment.create({
-    data: { organizationId: globex.id, clientName: "Globex Inc", type: "Web", status: "InProgress", scope: "Globex portal.", createdById: globexAdmin.id },
+    data: { id: "gx-web", organizationId: globex.id, clientName: "Globex Inc", type: "Web", status: "InProgress", scope: "Globex portal.", createdById: globexAdmin.id },
   });
 
   // ---- Findings of every severity (Northwind, on aWeb) ----
@@ -189,7 +190,7 @@ async function main() {
 
   // A couple of Globex findings (isolation target)
   await prisma.finding.create({
-    data: { organizationId: globex.id, assessmentId: gWeb.id, title: "GLOBEX-ONLY secret finding", severity: "Critical", likelihood: "High", impact: "High", status: "Open", createdById: globexAdmin.id },
+    data: { id: "gx-secret", organizationId: globex.id, assessmentId: gWeb.id, title: "GLOBEX-ONLY secret finding", severity: "Critical", likelihood: "High", impact: "High", status: "Open", createdById: globexAdmin.id },
   });
 
   // ---- Report audit row ----
