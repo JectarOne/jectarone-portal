@@ -1,5 +1,47 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 10 — Release Blockers (2026-07-05, branch `sprint-10-release-blockers`)
+
+Closes the launch blockers for v1.0.0-beta. No new product features beyond the
+account-lifecycle flows required to onboard paying customers.
+
+### Added
+- **Transactional email** (`src/lib/email.ts`): authenticated SMTP via nodemailer
+  when configured; in dev/test without SMTP, messages are written to
+  `.mail-outbox/` (so flows are testable). **Fails loudly in production if SMTP is
+  unset** — reset/verification cannot silently no-op.
+- **Email verification.** New signups receive a verification link; the dashboard
+  is gated on `User.emailVerifiedAt` until confirmed. Resend supported. Existing
+  accounts are grandfathered by the migration backfill (only new users must verify).
+- **Password reset.** `/forgot-password` (non-enumerating, IP-throttled) emails a
+  single-use, 1-hour, hashed token; `/reset-password` sets the new hash and
+  invalidates pending tokens. `Forgot your password?` link added to login.
+- **Tokens** (`src/lib/token.ts`, `Token` model, migration `0003`): SHA-256-hashed,
+  single-use, TTL'd (verify 24h / reset 1h); only the hash is stored.
+- **Sentry** (`@sentry/nextjs`): server/edge/client instrumentation, **inert unless
+  `SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN` is set**. Added `global-error` boundary
+  (reports + friendly UI) and a custom `not-found` page.
+- `.env.example` rewritten (Postgres default, `APP_URL`, SMTP, Sentry, S3/R2);
+  `docs/RELEASE-CHECKLIST.md` (v1.0.0-beta sign-off gate).
+
+### Tests
+- Unit: token hashing (sha256, deterministic, distinct) + expiry.
+- E2E (`test/e2e/account.spec.ts`): signup gated → verify link → dashboard;
+  invalid token rejected; forgot → reset → login with new password (old rejected);
+  reset token is single-use; forgot-password does not reveal account existence.
+  Uses the dev mail outbox to capture tokens.
+
+### Production verification (this sprint)
+- **jectar.one**: security headers present in prod; `contact-form.log` + internal
+  `.md` docs return **403**. Marketing-site blockers confirmed resolved live.
+- **portal**: `main` (sprints 7–9) is deployed and matches GitHub. This branch
+  adds the account flows; deploy + run `prisma migrate deploy` per the checklist.
+
+### Known follow-ups (documented, not beta blockers)
+- Reset does not revoke existing JWT sessions (7-day cookie). Add `passwordChangedAt`
+  session check post-beta.
+- `Token`/`LoginAttempt` cleanup job; CI to gate deploys.
+
 ## Sprint 9 — Storage & Production Validation (2026-07-05, branch `sprint-9-storage`)
 
 Validated the evidence upload/storage flow end to end against MinIO (emulates the
