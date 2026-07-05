@@ -12,12 +12,14 @@ datasource db {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  name         String
-  passwordHash String
-  createdAt    DateTime     @default(now())
-  memberships  Membership[]
+  id             String       @id @default(cuid())
+  email          String       @unique
+  name           String
+  passwordHash   String
+  emailVerifiedAt DateTime?   // null until the user confirms their email
+  createdAt      DateTime     @default(now())
+  memberships    Membership[]
+  tokens         Token[]
   assessments  Assessment[] @relation("AssessmentCreatedBy")
   findings         Finding[]        @relation("FindingCreatedBy")
   evidence         Evidence[]       @relation("EvidenceUploadedBy")
@@ -57,6 +59,22 @@ model LoginAttempt {
 
   @@index([key, createdAt])
   @@index([ip, createdAt])
+}
+
+// Single-use, hashed, expiring tokens for email verification + password reset.
+// The raw token is emailed; only its SHA-256 hash is stored.
+model Token {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // "verify" | "reset"
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, type])
+  @@index([expiresAt])
 }
 
 model Membership {
