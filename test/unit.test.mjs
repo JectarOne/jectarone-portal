@@ -231,3 +231,21 @@ test("initials from display name", () => {
   assert.equal(initials("  Ada  Lovelace  King "), "AK");
   assert.equal(initials(""), "?");
 });
+
+// Sprint 10 — token hashing + expiry (mirror of src/lib/token.ts).
+import crypto from "node:crypto";
+const hashToken = (raw) => crypto.createHash("sha256").update(raw).digest("hex");
+const isExpired = (expiresAt, now = Date.now()) => expiresAt.getTime() < now;
+
+test("token hash is sha256 hex, deterministic, and collision-distinct", () => {
+  const h = hashToken("abc");
+  assert.match(h, /^[0-9a-f]{64}$/, "sha256 hex");
+  assert.equal(h, hashToken("abc"), "deterministic");
+  assert.notEqual(hashToken("abc"), hashToken("abd"), "distinct inputs → distinct hashes");
+});
+
+test("token expiry check", () => {
+  const now = Date.parse("2026-07-05T12:00:00Z");
+  assert.equal(isExpired(new Date(now - 1000), now), true);
+  assert.equal(isExpired(new Date(now + 1000), now), false);
+});
