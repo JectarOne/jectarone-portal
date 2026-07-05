@@ -15,7 +15,7 @@ const SMTP = {
   user: process.env.SMTP_USER,
   pass: process.env.SMTP_PASS,
   secure: process.env.SMTP_SECURE === "true" || process.env.SMTP_PORT === "465",
-  from: process.env.EMAIL_FROM || "JectarOne <no-reply@jectar.one>",
+  from: process.env.SMTP_FROM ?? process.env.EMAIL_FROM ?? "JectarOne <contact@jectar.one>",
 };
 
 export function mailConfigured(): boolean {
@@ -44,7 +44,20 @@ function transport(): nodemailer.Transporter {
 
 export async function sendMail(mail: Mail): Promise<void> {
   if (mailConfigured()) {
-    await transport().sendMail({ from: SMTP.from, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html });
+    try {
+      await transport().sendMail({
+        from: SMTP.from,
+        to: mail.to,
+        subject: mail.subject,
+        text: mail.text,
+        html: mail.html,
+      });
+    } catch (err) {
+      // Log the full Nodemailer error so Vercel Runtime Logs surface the code
+      // (EAUTH, ECONNECTION, ETIMEDOUT, …) before rethrowing.
+      console.error("SMTP send failed:", err);
+      throw err;
+    }
     return;
   }
   if (process.env.NODE_ENV === "production") {
