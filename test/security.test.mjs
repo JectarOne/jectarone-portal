@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { securityHeaders } from "../next.config.mjs";
+import { securityHeaders, buildCsp } from "../next.config.mjs";
 import nextConfig from "../next.config.mjs";
 
 // ---------- M1/L1: security response headers ----------
@@ -24,6 +24,22 @@ test("CSP allows S3 presigned uploads/thumbnails and Next inline bootstrap", () 
   assert.match(csp, /script-src[^;]*'unsafe-inline'/, "Next hydration bootstrap");
   assert.match(csp, /style-src[^;]*fonts\.googleapis\.com/, "Google Fonts stylesheet");
   assert.match(csp, /font-src[^;]*fonts\.gstatic\.com/, "Google Fonts files");
+});
+
+test("production CSP stays strict; dev relaxes only for tooling/local S3", () => {
+  const prod = buildCsp({ dev: false, s3Endpoint: "" });
+  assert.doesNotMatch(prod, /'unsafe-eval'/, "prod must NOT allow unsafe-eval");
+  assert.doesNotMatch(prod, /localhost:9000/, "prod must not whitelist local S3");
+  assert.match(prod, /connect-src[^;]*https:/, "prod S3 (R2, https) still allowed");
+
+  const dev = buildCsp({ dev: true });
+  assert.match(dev, /script-src[^;]*'unsafe-eval'/, "dev needs unsafe-eval for next dev HMR");
+  assert.match(dev, /connect-src[^;]*http:\/\/localhost:9000/, "dev allows MinIO fetch");
+  assert.match(dev, /img-src[^;]*http:\/\/localhost:9000/, "dev allows MinIO thumbnails");
+
+  // A self-hosted http S3 endpoint in a non-dev deploy is whitelisted explicitly.
+  const selfHosted = buildCsp({ dev: false, s3Endpoint: "http://minio.internal:9000" });
+  assert.match(selfHosted, /connect-src[^;]*http:\/\/minio\.internal:9000/);
 });
 
 test("poweredByHeader disabled and headers wired to all routes", async () => {
