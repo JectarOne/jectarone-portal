@@ -6,7 +6,7 @@ import { getSession } from "@/lib/auth";
 import { hasRole } from "@/lib/rbac";
 import { evidenceSchema, evidenceUploadSchema } from "@/lib/validation";
 import { logActivity } from "@/lib/activity";
-import { storageConfigured, presignUpload, evidenceKey, ALLOWED_EVIDENCE_TYPES, MAX_EVIDENCE_BYTES } from "@/lib/storage";
+import { storageConfigured, presignUpload, evidenceKey, deleteObject, ALLOWED_EVIDENCE_TYPES, MAX_EVIDENCE_BYTES } from "@/lib/storage";
 
 export type EvidenceState = { error?: string };
 
@@ -116,6 +116,12 @@ export async function deleteEvidenceAction(formData: FormData): Promise<void> {
   if (!ev || ev.organizationId !== session.orgId || ev.deletedAt) return;
 
   await prisma.evidence.update({ where: { id }, data: { deletedAt: new Date() } }); // soft delete
+  // Remove the backing object from storage so deleted evidence does not linger
+  // in the bucket (orphaned object / data-retention leak). Best-effort: a failed
+  // delete is logged inside deleteObject, not surfaced to the user.
+  if (ev.storageKey && storageConfigured()) {
+    await deleteObject(ev.storageKey);
+  }
   await logActivity({
     organizationId: session.orgId, userId: session.userId, action: "evidence.deleted",
     detail: ev.filename, assessmentId: ev.finding.assessmentId, findingId: ev.findingId,
