@@ -74,7 +74,7 @@ export async function getSession() {
     userId: membership.userId,
     orgId: membership.organizationId,
     role: membership.role,
-    user: { id: membership.user.id, name: membership.user.name, email: membership.user.email },
+    user: { id: membership.user.id, name: membership.user.name, email: membership.user.email, emailVerifiedAt: membership.user.emailVerifiedAt },
     organization: { id: membership.organization.id, name: membership.organization.name, slug: membership.organization.slug },
   };
 }

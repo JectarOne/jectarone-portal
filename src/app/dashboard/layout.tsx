@@ -7,6 +7,9 @@ import { NavLink, Avatar } from "@/components/nav-link";
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session) redirect("/login");
+  // Gate the app on a verified email. Existing accounts were grandfathered by
+  // the 0003 migration; only new, unverified signups are redirected.
+  if (!session.user.emailVerifiedAt) redirect("/verify-email");
 
   return (
     <div className="shell">

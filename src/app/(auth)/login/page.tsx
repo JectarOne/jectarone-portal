@@ -32,6 +32,7 @@ export default function LoginPage() {
           </button>
         </form>
 
+        <p className="foot" style={{ marginTop: "1rem" }}><Link href="/forgot-password">Forgot your password?</Link></p>
         <p className="foot">No account yet? <Link href="/signup">Create an organization</Link></p>
       </div>
     </div>

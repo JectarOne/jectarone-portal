@@ -52,10 +52,10 @@ async function main() {
   const passwordHash = await bcrypt.hash(PASSWORD, 10);
 
   // ---- Users ----
-  const admin = await prisma.user.create({ data: { name: "Aya Benali", email: "admin@northwind.test", passwordHash } });
-  const consultant = await prisma.user.create({ data: { name: "Karim Idrissi", email: "consultant@northwind.test", passwordHash } });
-  const client = await prisma.user.create({ data: { name: "Sofia Client", email: "client@northwind.test", passwordHash } });
-  const globexAdmin = await prisma.user.create({ data: { name: "Otto Globex", email: "admin@globex.test", passwordHash } });
+  const admin = await prisma.user.create({ data: { name: "Aya Benali", email: "admin@northwind.test", passwordHash, emailVerifiedAt: new Date() } });
+  const consultant = await prisma.user.create({ data: { name: "Karim Idrissi", email: "consultant@northwind.test", passwordHash, emailVerifiedAt: new Date() } });
+  const client = await prisma.user.create({ data: { name: "Sofia Client", email: "client@northwind.test", passwordHash, emailVerifiedAt: new Date() } });
+  const globexAdmin = await prisma.user.create({ data: { name: "Otto Globex", email: "admin@globex.test", passwordHash, emailVerifiedAt: new Date() } });
 
   // ---- Orgs + memberships ----
   const northwind = await prisma.organization.create({ data: { name: "Northwind Corp", slug: "northwind" } });

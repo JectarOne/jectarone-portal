@@ -6,6 +6,8 @@ import { hashPassword, verifyPassword } from "@/lib/password";
 import { setSessionCookie, clearSessionCookie } from "@/lib/auth";
 import { signupSchema, loginSchema, slugify } from "@/lib/validation";
 import { loginThrottled, recordFailedLogin, clearLoginAttempts, ipThrottled, recordAttempt } from "@/lib/rate-limit";
+import { issueToken } from "@/lib/token";
+import { sendMail, verifyEmailTemplate, appUrl } from "@/lib/email";
 
 export type ActionState = { error?: string };
 
@@ -50,6 +52,14 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
       data: { userId: user.id, organizationId: org.id, role: "OWNER" },
     });
   });
+
+  // Issue an email-verification token and send it. Failure to send must not
+  // block account creation — the user can request a resend from /verify-email.
+  try {
+    const raw = await issueToken(membership.userId, "verify");
+    const tpl = verifyEmailTemplate(`${appUrl()}/verify-email?token=${raw}`);
+    await sendMail({ ...tpl, to: email });
+  } catch { /* logged by the mailer; surfaced via the resend page */ }
 
   await setSessionCookie({ uid: membership.userId, oid: membership.organizationId });
   redirect("/dashboard");
