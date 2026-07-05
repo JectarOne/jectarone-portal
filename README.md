@@ -65,23 +65,34 @@ self-rolled JWT session auth (jose + bcryptjs) · zod validation · plain CSS (b
 
 ## Local development
 ```bash
-docker compose up -d          # Postgres 16 on :5433 (mirrors production)
-cp .env.example .env          # set DATABASE_URL (below) + AUTH_SECRET
+docker compose up -d          # Postgres 16 (:5433) + MinIO S3 (:9000, console :9001)
+cp .env.example .env          # set the values below
 #   DATABASE_URL="postgresql://portal:portal@localhost:5433/jectarone?schema=public"
+#   AUTH_SECRET="<long random>"
+#   # S3 (MinIO locally; Cloudflare R2 in production):
+#   S3_BUCKET="jectarone-evidence"  S3_REGION="us-east-1"
+#   S3_ACCESS_KEY_ID="minioadmin"   S3_SECRET_ACCESS_KEY="minioadmin"
+#   S3_ENDPOINT="http://localhost:9000"
 npm install
 npm run db:migrate            # apply prisma migrations
 npm run db:seed               # realistic multi-org demo data
 npm run dev                   # http://localhost:3000
 ```
+MinIO console: http://localhost:9001 (minioadmin/minioadmin). With the S3_* vars
+set, evidence uploads use real presigned PUT/GET; unset them for metadata-only mode.
+Production uses **Cloudflare R2** — see `docs/R2-VERIFICATION.md`.
 Seeded logins (all `Passw0rd!123`): `admin@northwind.test` (owner),
 `consultant@northwind.test` (analyst), `client@northwind.test` (read-only).
 Or sign up at `/signup` to create a fresh organization.
 
 ## Tests
 ```bash
-npm test          # node:test — RBAC, validation, risk/SLA/markdown/storage,
-                  #   security headers + login-throttle logic, cvssBand, initials
-npm run test:e2e  # Playwright — full authenticated suite + axe (needs the DB)
+npm test           # node:test — RBAC, validation, risk/SLA/markdown, CSP builder,
+                   #   security headers + login-throttle logic, cvssBand, initials
+npm run test:storage # storage integration vs MinIO (presigned PUT/GET, expiry,
+                     #   delete, permission failures, concurrent) — needs MinIO
+npm run test:e2e   # Playwright — full authenticated suite incl. evidence upload,
+                   #   thumbnails, delete + axe (needs Postgres + MinIO)
 ```
 
 - **Unit** (`test/*.test.mjs`): pure-logic mirrors + `next.config` security

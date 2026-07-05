@@ -1,5 +1,50 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 9 — Storage & Production Validation (2026-07-05, branch `sprint-9-storage`)
+
+Validated the evidence upload/storage flow end to end against MinIO (emulates the
+production Cloudflare R2 bucket).
+
+### Bugs fixed (found by the new tests)
+- **Deleted evidence left the S3 object orphaned.** `deleteEvidenceAction`
+  soft-deleted the DB row but never removed the backing file — a storage leak and
+  a data-retention problem for sensitive evidence. It now calls
+  `deleteObject(storageKey)` (best-effort) when storage is configured.
+  Regression: the upload E2E asserts the object is gone from the bucket after
+  deletion.
+- **The strict CSP broke `next dev` and local S3 uploads.** `next dev` uses
+  `eval()` for HMR, so with no `'unsafe-eval'` the evidence uploader's client
+  `onSubmit` silently died (uploads never fired); and MinIO's `http://localhost:9000`
+  was blocked by `connect-src`/`img-src` (`'self' https:`), breaking the presigned
+  PUT and image thumbnails. `buildCsp()` now applies these relaxations **in
+  development only** (plus an explicit http endpoint for self-hosted non-dev
+  deploys). **Production R2 is https and stays strict** — no `'unsafe-eval'`, no
+  localhost — covered by a unit test.
+
+### Added
+- **MinIO** in `docker-compose.yml` (S3-compatible) with an auto-created private
+  `jectarone-evidence` bucket; CORS works for browser presigned PUTs.
+- **Storage integration tests** (`npm run test:storage`, `test/integration/`):
+  presigned PUT+GET round-trip, signed-URL expiry, delete, bad-credential
+  permission failure, nonexistent-bucket failure, concurrent uploads, MIME/size
+  limits — against real MinIO.
+- **Browser upload E2E** (`test/e2e/upload.spec.ts`): successful upload lands the
+  object + renders a thumbnail + download link; invalid MIME and >25 MB rejected
+  (no object written); evidence delete removes the object (regression); multiple
+  uploads persist. Verifies bucket state directly via aws-sdk.
+- `docs/R2-VERIFICATION.md` — scripted checklist to run the identical flow
+  against a **staging** R2 bucket.
+
+### Not done (and why)
+- **The production R2 bucket was NOT exercised by the agent** — no R2 credentials
+  here, and the tests write/delete objects, which must never run against the live
+  evidence bucket. `docs/R2-VERIFICATION.md` provides the exact env + commands to
+  verify against a staging R2 bucket; the code path is identical (R2 is S3-compatible).
+- **Orphaned uploads from abandoned sessions** (presigned PUT succeeds, browser
+  never registers) are inherent to direct-to-S3 uploads; mitigate with an R2
+  lifecycle rule / reconciliation job (documented in R2-VERIFICATION.md). The
+  delete path itself is now clean.
+
 ## Sprint 8 — Authenticated Production QA (2026-07-05, branch `sprint-8-qa`)
 
 Full end-to-end validation of the authenticated app against a seeded Postgres

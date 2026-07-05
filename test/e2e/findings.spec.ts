@@ -42,13 +42,16 @@ test.describe("findings", () => {
     await expect(page.getByText(body)).toBeVisible();
   });
 
-  test("record evidence metadata", async ({ page }) => {
+  test("record evidence metadata (fallback when storage is unconfigured)", async ({ page }) => {
     await login(page, USERS.consultant);
     await createFinding(page, "E2E Evidence " + Date.now());
+    // When S3 is configured the real uploader (file input) replaces the metadata
+    // form — that path is covered by upload.spec. Only test the fallback here.
+    const hasUploader = await page.getByLabel(/^file/i).count();
+    test.skip(hasUploader > 0, "storage configured → real upload covered by upload.spec.ts");
     const fname = "poc-" + Date.now() + ".png";
     await page.getByLabel(/filename/i).fill(fname);
     await page.getByRole("button", { name: /add evidence/i }).click();
-    // Filename appears in the evidence table (and the timeline log) — assert the table cell.
     await expect(page.getByRole("cell", { name: fname })).toBeVisible();
   });
 
