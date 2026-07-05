@@ -49,7 +49,14 @@ export const findingSchema = z.object({
   severity: z.enum(SEVERITIES),
   likelihood: z.enum(LIKELIHOODS),
   impact: z.enum(IMPACTS),
-  status: z.enum(ALL_STATUSES).default("Open"),
+  // The finding form never submits status (status is managed by the workflow
+  // action). formData.get("status") is therefore null, and z.default() only
+  // fills for `undefined`, not `null` — so treat null/empty as absent → "Open".
+  // Without this, UI create/edit of a finding fails Zod validation.
+  status: z.preprocess(
+    (v) => (v === null || v === undefined || v === "" ? undefined : v),
+    z.enum(ALL_STATUSES).default("Open")
+  ),
   cvssScore: optionalNumber(0, 10),
   cvssVector: optionalText(160),
   cwe: optionalText(40),
