@@ -9,7 +9,7 @@ test.describe("assessments", () => {
     await page.getByLabel(/client name/i).fill(name);
     await page.getByLabel(/assessment type/i).selectOption("Network");
     await page.getByRole("button", { name: /create|save/i }).click();
-    await page.waitForURL(/\/dashboard\/assessments\/[^/]+$/);
+    await page.waitForURL(/\/dashboard\/assessments\/(?!new$)[^/]+$/);
     await expect(page.getByRole("heading", { name: new RegExp(name) })).toBeVisible();
   });
 
@@ -44,7 +44,7 @@ test.describe("assessments", () => {
     const name = "E2E Archive " + Date.now();
     await page.getByLabel(/client name/i).fill(name);
     await page.getByRole("button", { name: /create|save/i }).click();
-    await page.waitForURL(/\/dashboard\/assessments\/[^/]+$/);
+    await page.waitForURL(/\/dashboard\/assessments\/(?!new$)[^/]+$/);
     await page.getByRole("button", { name: /^archive$/i }).click();
     await expect(page.getByRole("button", { name: /unarchive/i })).toBeVisible();
     await expect(page.getByText("Archived", { exact: true })).toBeVisible();
@@ -63,7 +63,7 @@ test.describe("assessments", () => {
     const name = "E2E Delete " + Date.now();
     await page.getByLabel(/client name/i).fill(name);
     await page.getByRole("button", { name: /create|save/i }).click();
-    await page.waitForURL(/\/dashboard\/assessments\/[^/]+$/);
+    await page.waitForURL(/\/dashboard\/assessments\/(?!new$)[^/]+$/);
     await page.getByRole("button", { name: /^delete$/i }).click();
     await page.waitForURL(/\/dashboard\/assessments$/);
     await expect(page.getByText(name)).toHaveCount(0);
