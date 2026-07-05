@@ -1,5 +1,53 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 8 — Authenticated Production QA (2026-07-05, branch `sprint-8-qa`)
+
+Full end-to-end validation of the authenticated app against a seeded Postgres
+that mirrors production.
+
+### Bug fixed (found by E2E)
+- **Creating or editing a finding through the UI failed with a Zod error**
+  (`Expected 'Open' | … received null`). The finding form never submits a
+  `status` field (status is workflow-managed), so `formData.get("status")` is
+  `null`; `z.enum(...).default("Open")` only fills for `undefined`, not `null`.
+  The bug was masked because the seed wrote findings directly via Prisma.
+  Fix: `findingSchema.status` now preprocesses `null`/`""` → `undefined` so the
+  default applies (`src/lib/validation.ts`). Regression coverage: the
+  `findings › create` E2E now exercises the real form. **One logical fix commit.**
+
+### Reproducible database
+- `docker-compose.yml` — Postgres 16 on `:5433` with a named volume + healthcheck.
+- `prisma/seed.mjs` (`npm run db:seed`) — two orgs (Northwind, Globex),
+  OWNER/MEMBER(analyst)/CLIENT users, assessments in every status incl. archived,
+  findings of every severity (with CVSS/CWE/OWASP) plus an overdue one, assets,
+  evidence, comments, and activity history. Stable ids (`nw-web`, `gx-web`,
+  `gx-secret`) anchor cross-org tests. Scripts: `db:migrate`, `db:seed`, `db:reset`.
+
+### Playwright E2E (authenticated)
+Global setup migrates + reseeds before each run; serial (one DB). Coverage:
+- **Auth**: login, logout, invalid credentials, session-required redirect,
+  forged **expired-token** rejection, **brute-force throttle**.
+- **Assessments**: create, edit, status filter, archived filter, archive toggle,
+  admin-only delete (consultant blocked).
+- **Findings**: create, status transition + history/timeline, comment, evidence
+  metadata, CVSS badge + severity, search + filter.
+- **Assets**: create, edit, archive filter, admin-only delete.
+- **RBAC / isolation**: no cross-org data on lists; cross-org direct-URL access
+  renders no data; CLIENT is read-only (no mutate controls); other org sees only
+  its own data.
+- **Reports**: PDF download (`application/pdf` + attachment), audit row written.
+- **Security**: security headers/CSP present, `X-Powered-By` absent, API 401
+  without session, API org-scoped + cross-org object → 404, session cookie
+  `HttpOnly`+`SameSite=Lax`, CLIENT mutation rejected server-side.
+
+### Notes
+- E2E runs against `next dev` so session cookies stay non-Secure over
+  `http://127.0.0.1` (a production build sets Secure cookies the API client won't
+  send over http). `retries: 2` absorbs `next dev` first-hit route compilation.
+- Cross-org direct URLs return HTTP 200 (not 404) because `notFound()` runs
+  inside a streamed server component (a `loading.tsx` is present); **no data
+  leaks** — verified by asserting the absence of the other org's content.
+
 ## Sprint 7 — Production Readiness & UX Polish (2026-07-04, branch `sprint-7-polish`)
 
 Accessibility, UX, and consistency pass. Each item is its own commit; `npm test`

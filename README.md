@@ -65,28 +65,35 @@ self-rolled JWT session auth (jose + bcryptjs) · zod validation · plain CSS (b
 
 ## Local development
 ```bash
-cp .env.example .env          # then edit AUTH_SECRET
+docker compose up -d          # Postgres 16 on :5433 (mirrors production)
+cp .env.example .env          # set DATABASE_URL (below) + AUTH_SECRET
+#   DATABASE_URL="postgresql://portal:portal@localhost:5433/jectarone?schema=public"
 npm install
-npm run db:push               # creates the SQLite dev.db from the schema
+npm run db:migrate            # apply prisma migrations
+npm run db:seed               # realistic multi-org demo data
 npm run dev                   # http://localhost:3000
 ```
-Sign up at `/signup` to create your first organization.
+Seeded logins (all `Passw0rd!123`): `admin@northwind.test` (owner),
+`consultant@northwind.test` (analyst), `client@northwind.test` (read-only).
+Or sign up at `/signup` to create a fresh organization.
 
 ## Tests
 ```bash
-npm test         # node:test — RBAC, validation, risk/SLA/markdown/storage,
-                 #   security headers + login-throttle logic, cvssBand, initials
-npm run test:e2e # Playwright + axe-core on /login and /signup (boots `next dev`)
+npm test          # node:test — RBAC, validation, risk/SLA/markdown/storage,
+                  #   security headers + login-throttle logic, cvssBand, initials
+npm run test:e2e  # Playwright — full authenticated suite + axe (needs the DB)
 ```
 
 - **Unit** (`test/*.test.mjs`): pure-logic mirrors + `next.config` security
   headers — no DB or browser required.
-- **E2E** (`test/e2e/*.spec.ts`): Playwright drives the public auth pages
-  (desktop + mobile) and runs `@axe-core` WCAG 2.0/2.1 A/AA checks. These pages
-  render without a database.
-- **Authenticated dashboard E2E** needs a seeded Postgres (`DATABASE_URL`) and a
-  logged-in session; run it against a staging DB — it is intentionally out of the
-  no-DB CI path here.
+- **E2E** (`test/e2e/*.spec.ts`): the Postgres from `docker compose up -d` must
+  be running. Playwright's global setup migrates + reseeds the database, boots
+  `next dev`, then exercises the full authenticated app — auth/sessions/throttle,
+  assessments, findings, assets, RBAC + org isolation, reports, and security
+  headers/authorization — plus `@axe-core` checks on the auth pages. Runs serial
+  (`workers: 1`) because the suite shares one database.
+- E2E uses `next dev` on purpose so session cookies stay non-Secure over
+  `http://127.0.0.1`. Point it at another Postgres with `E2E_DATABASE_URL`.
 
 > Chromium for Playwright: `npx playwright install chromium` (once).
 
