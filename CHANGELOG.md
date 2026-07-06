@@ -1,5 +1,43 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 13 — Operations (2026-07-06, branch `sprint-13-operations`)
+
+Operations & account-management surface under `/dashboard/settings`.
+Migration `0004` adds `Session`, `ApiToken`, and `User.emailPrefs`.
+
+### Added
+- **Tracked, revocable sessions.** Login now records a `Session` row (device UA +
+  IP); the JWT carries its id (`sid`) and `getSession` rejects tokens whose
+  session is missing/revoked. Enables:
+  - **Session management / device list / active sessions** — see every signed-in
+    device with last-active time.
+  - **Revoke sessions** — sign out a device, or "sign out all other sessions".
+    Revocation takes effect on the device's next request.
+  - **Security events** — `security.*` audit entries (login-security actions,
+    password change, session revocations) shown per user.
+- **User profile** — update name; **change password** (re-auth required; revokes
+  all other sessions).
+- **Organization settings** — rename the organization (ADMIN+).
+- **API tokens** — org tokens shown **once** (only the SHA-256 hash is stored);
+  authenticate the REST API via `Authorization: Bearer jo_…`; revocable (ADMIN+).
+- **Email preferences** — per-category email opt-ins.
+- **Audit Log UI** — filterable org activity timeline.
+
+### Tests
+- Unit: `deviceName` UA parsing.
+- E2E (`operations.spec.ts`): profile update, org rename (admin vs member),
+  email prefs, current-session listing, **cross-context session revocation**
+  (device B signs out device A → A is logged out), audit log + filter, and
+  **API-token auth** (Bearer works → revoke → 401).
+
+### Deferred (documented — need delivery/generation infrastructure)
+- **Webhook support** — reliable outbound delivery (queue, retries, HMAC signing,
+  endpoint verification) is real infrastructure; not built this sprint to avoid
+  a half-working delivery path.
+- **In-app notification center** (unread bell) — needs per-user notification
+  generation triggers. Email preferences + the activity feed + audit log cover
+  the near-term need; a true notification store is a follow-up.
+
 ## Sprint 12 — Executive Reporting (2026-07-06, branch `sprint-12-executive-reporting`)
 
 Premium PDF reports, generated live from current data (`@react-pdf/renderer`).
