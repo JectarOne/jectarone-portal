@@ -8,6 +8,7 @@ import { isOverdue, daysUntilDue } from "@/lib/sla";
 import { renderMarkdown } from "@/lib/markdown";
 import { storageConfigured, presignDownload } from "@/lib/storage";
 import { SeverityBadge, FindingStatusBadge, RiskMatrix } from "@/components/findings-ui";
+import { EvidenceGallery, type EvidenceItem } from "@/components/evidence-gallery";
 import {
   updateFindingAction, setFindingArchivedAction, deleteFindingAction,
   changeStatusAction, assignFindingAction, setDueDateAction, acceptRiskAction,
@@ -21,12 +22,6 @@ import { CommentForm } from "./CommentForm";
 import { CommentItem } from "./CommentItem";
 import { AcceptRiskForm } from "./AcceptRiskForm";
 
-function fmtBytes(n: number | null): string {
-  if (!n && n !== 0) return "";
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / 1024 / 1024).toFixed(1)} MB`;
-}
 function dt(d: Date | null): string {
   return d ? new Date(d).toISOString().slice(0, 16).replace("T", " ") : "—";
 }
@@ -69,6 +64,13 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
         previews[ev.id] = await presignDownload(ev.storageKey);
       }
     }
+  }
+  // Per-file download counts (from the evidence.downloaded activity log).
+  const downloads: Record<string, number> = {};
+  for (const ev of f.evidence) {
+    downloads[ev.id] = await prisma.activityLog.count({
+      where: { organizationId: session.orgId, findingId: fid, action: "evidence.downloaded", detail: ev.filename },
+    });
   }
   const overdue = isOverdue(f.dueDate, f.status);
   const dLeft = daysUntilDue(f.dueDate);
@@ -201,41 +203,16 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
       {/* Evidence */}
       <div className="section-head"><h2>Evidence <span className="count">{f.evidence.length}</span></h2></div>
       <div className="card">
-        {f.evidence.length > 0 && (
-          <table className="table">
-            <thead><tr><th>File</th><th>Type</th><th>Size</th><th>Added by</th><th></th></tr></thead>
-            <tbody>
-              {f.evidence.map((ev) => (
-                <tr key={ev.id}>
-                  <td>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element -- presigned, short-lived external S3 URL; next/image is impractical here */}
-                      {previews[ev.id] && <img className="evidence-thumb" src={previews[ev.id]} alt={ev.filename} />}
-                      <div>
-                        <strong>{ev.filename}</strong>
-                        {ev.note && <div className="muted" style={{ fontSize: "0.78rem" }}>{ev.note}</div>}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="muted">{ev.mimeType}</td>
-                  <td className="muted">{fmtBytes(ev.sizeBytes)}</td>
-                  <td className="muted">{ev.uploadedBy?.name ?? "—"}</td>
-                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                    {ev.storageKey && (
-                      <a className="btn btn-secondary" href={`/api/v1/evidence/${ev.id}`} target="_blank" rel="noopener noreferrer" style={{ padding: "0.25rem 0.6rem", fontSize: "0.78rem", marginRight: canWrite ? "0.4rem" : 0 }}>Download</a>
-                    )}
-                    {canWrite && (
-                      <form action={deleteEvidenceAction} style={{ display: "inline" }}>
-                        <input type="hidden" name="id" value={ev.id} />
-                        <button className="btn btn-danger" type="submit" style={{ padding: "0.25rem 0.6rem", fontSize: "0.78rem" }}>Remove</button>
-                      </form>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <EvidenceGallery
+          items={f.evidence.map((ev): EvidenceItem => ({
+            id: ev.id, filename: ev.filename, mimeType: ev.mimeType, sizeBytes: ev.sizeBytes,
+            note: ev.note, uploadedByName: ev.uploadedBy?.name ?? null, storageKey: ev.storageKey,
+          }))}
+          previews={previews}
+          downloads={downloads}
+          canWrite={canWrite}
+          deleteAction={deleteEvidenceAction}
+        />
         {canWrite && (
           <div style={{ marginTop: f.evidence.length ? "1rem" : 0 }}>
             {storeOn

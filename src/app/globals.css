@@ -413,3 +413,22 @@ html[data-theme="light"] .card { box-shadow: 0 1px 2px rgba(2, 8, 20, 0.04); }
 .timeline-action { font-weight: 600; color: var(--text); }
 .timeline-detail { color: var(--muted); }
 .timeline-meta { color: var(--muted); font-size: 0.76rem; margin-top: 0.15rem; }
+
+/* ---- Sprint 11: evidence gallery ---- */
+.btn-sm { padding: 0.3rem 0.65rem; font-size: 0.8rem; }
+.evidence-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.9rem; }
+.ev-card { border: 1px solid var(--line); border-radius: 12px; background: var(--bg-deep); overflow: hidden; display: flex; flex-direction: column; }
+.ev-thumb { height: 120px; display: grid; place-items: center; background: rgba(148,163,184,0.06); overflow: hidden; }
+.ev-thumb-img { width: 100%; height: 100%; object-fit: cover; }
+.file-icon { font-weight: 800; font-size: 0.9rem; letter-spacing: 0.05em; padding: 0.5rem 0.7rem; border-radius: 8px; color: #fff; }
+.file-icon.fi-img { background: var(--c-info); color: #04121f; }
+.file-icon.fi-pdf { background: var(--c-critical); }
+.file-icon.fi-zip { background: var(--c-medium); color: #04121f; }
+.file-icon.fi-txt { background: var(--c-accepted); color: #04121f; }
+.file-icon.fi-file { background: var(--muted); }
+.ev-info { padding: 0.7rem 0.8rem; flex: 1; }
+.ev-name { display: block; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev-note { color: var(--muted); font-size: 0.76rem; margin-top: 0.2rem; }
+.ev-meta { display: flex; align-items: center; gap: 0.4rem; color: var(--muted); font-size: 0.74rem; margin-top: 0.4rem; flex-wrap: wrap; }
+.ev-dl { margin-left: auto; font-weight: 700; color: var(--text); }
+.ev-actions { display: flex; gap: 0.4rem; padding: 0 0.8rem 0.8rem; }
