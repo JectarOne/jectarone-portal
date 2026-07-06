@@ -279,6 +279,19 @@ test("report: countBy aggregates + sorts by count desc", () => {
   assert.deepEqual(countBy([], "cwe"), []);
 });
 
+// Sprint 13 — device label (mirror of src/lib/device.ts).
+function deviceName(ua) {
+  if (!ua) return "Unknown device";
+  const b = /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "Browser";
+  const os = /Windows/.test(ua) ? "Windows" : /Mac OS X|Macintosh/.test(ua) ? "macOS" : /Android/.test(ua) ? "Android" : /iPhone|iPad|iPod/.test(ua) ? "iOS" : /Linux/.test(ua) ? "Linux" : "";
+  return os ? `${b} · ${os}` : b;
+}
+test("deviceName parses common user agents", () => {
+  assert.equal(deviceName("Mozilla/5.0 (Windows NT 10.0) Chrome/120.0"), "Chrome · Windows");
+  assert.equal(deviceName("Mozilla/5.0 (Macintosh) Firefox/121.0"), "Firefox · macOS");
+  assert.equal(deviceName(null), "Unknown device");
+});
+
 test("report: recommendations prioritized by severity then cvss", () => {
   const f = [
     { title: "low", severity: "Low", cvssScore: 3, remediation: "fix" },

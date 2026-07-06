@@ -17,9 +17,12 @@ model User {
   name           String
   passwordHash   String
   emailVerifiedAt DateTime?   // null until the user confirms their email
+  emailPrefs     String       @default("{}") // JSON of per-category email opt-ins
   createdAt      DateTime     @default(now())
   memberships    Membership[]
   tokens         Token[]
+  sessions       Session[]
+  apiTokens      ApiToken[]
   assessments  Assessment[] @relation("AssessmentCreatedBy")
   findings         Finding[]        @relation("FindingCreatedBy")
   evidence         Evidence[]       @relation("EvidenceUploadedBy")
@@ -44,6 +47,41 @@ model Organization {
   assets      Asset[]
   reports     Report[]
   comments    FindingComment[]
+  apiTokens   ApiToken[]
+}
+
+// Tracked login sessions — enables the device/active-sessions list and remote
+// revocation. The JWT carries this row's id as `sid`; getSession rejects a token
+// whose session row is missing or revoked.
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent  String?
+  ip         String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+
+  @@index([userId])
+}
+
+// Organization API tokens for the REST API (Authorization: Bearer). Only the
+// SHA-256 hash is stored; a short prefix is kept for display.
+model ApiToken {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  tokenHash      String       @unique
+  prefix         String       // e.g. "jo_ab12" for display
+  lastUsedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  revokedAt      DateTime?
+
+  @@index([organizationId])
 }
 
 // Brute-force / credential-stuffing throttle for login (and signup).

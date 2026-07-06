@@ -17,6 +17,12 @@ function human(action: string): string {
     "evidence.deleted": "Evidence deleted",
     "evidence.downloaded": "Evidence downloaded",
     "report.generated": "Report generated",
+    "security.password_changed": "Password changed",
+    "security.session_revoked": "Session revoked",
+    "security.sessions_revoked_all": "All other sessions revoked",
+    "org.renamed": "Organization renamed",
+    "apitoken.created": "API token created",
+    "apitoken.revoked": "API token revoked",
   };
   return map[action] ?? action;
 }
