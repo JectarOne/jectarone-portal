@@ -448,3 +448,24 @@ html[data-theme="light"] .card { box-shadow: 0 1px 2px rgba(2, 8, 20, 0.04); }
 @media (max-width: 780px) {
   .card > .table { display: block; overflow-x: auto; white-space: nowrap; }
 }
+
+/* ---- Sprint 11: light-mode contrast fixes (WCAG AA on white) ---- */
+html[data-theme="light"] .sev-critical-text, html[data-theme="light"] .score-F { color: #b91c1c; }
+html[data-theme="light"] .sev-high-text, html[data-theme="light"] .score-D { color: #b45309; }
+html[data-theme="light"] .score-C { color: #a16207; }
+html[data-theme="light"] .sev-low-text, html[data-theme="light"] .score-A, html[data-theme="light"] .score-B { color: #15803d; }
+/* Severity/status/risk badge text needs darker shades on light backgrounds. */
+html[data-theme="light"] .badge.sev-critical, html[data-theme="light"] .badge.risk-critical { color: #b91c1c; }
+html[data-theme="light"] .badge.sev-high, html[data-theme="light"] .badge.risk-high { color: #b45309; }
+html[data-theme="light"] .badge.sev-medium, html[data-theme="light"] .badge.risk-medium { color: #a16207; }
+html[data-theme="light"] .badge.sev-low, html[data-theme="light"] .badge.risk-low,
+html[data-theme="light"] .badge.fstatus-fixed, html[data-theme="light"] .badge.fstatus-verified { color: #15803d; }
+html[data-theme="light"] .badge.fstatus-inprogress { color: #a16207; }
+html[data-theme="light"] .badge.sev-informational, html[data-theme="light"] .badge.fstatus-open,
+html[data-theme="light"] .badge, html[data-theme="light"] .status-inprogress { color: #0369a1; }
+html[data-theme="light"] .status-badge.status-review { color: #a16207; }
+html[data-theme="light"] .status-badge.status-delivered { color: #15803d; }
+html[data-theme="light"] .cvss-critical { color: #b91c1c; }
+html[data-theme="light"] .cvss-high { color: #b45309; }
+html[data-theme="light"] .cvss-medium { color: #a16207; }
+html[data-theme="light"] .cvss-low { color: #15803d; }
