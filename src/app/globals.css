@@ -13,6 +13,17 @@
   --line-strong: rgba(56, 189, 248, 0.32);
   --radius: 14px;
   --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Chart / severity palette (solid, used by SVG charts) */
+  --c-critical: #ef4444;
+  --c-high: #f59e0b;
+  --c-medium: #eab308;
+  --c-low: #22c55e;
+  --c-info: #38bdf8;
+  --c-open: #38bdf8;
+  --c-progress: #eab308;
+  --c-resolved: #22c55e;
+  --c-accepted: #94a3b8;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -307,3 +318,46 @@ h3.sub { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; c
   .side .spacer, .side .whoami { display: none; }
   .grid-3 { grid-template-columns: 1fr; }
 }
+
+/* ---- Sprint 11: charts, security score, dashboard widgets ---- */
+.chart-bars { display: grid; gap: 0.55rem; }
+.chart-bar-row { display: grid; grid-template-columns: 92px 1fr 28px; align-items: center; gap: 0.6rem; }
+.chart-bar-label { font-size: 0.82rem; color: var(--muted); }
+.chart-bar-track { background: rgba(148,163,184,0.12); border-radius: 999px; overflow: hidden; height: 16px; }
+.chart-bar-fill { display: block; height: 100%; border-radius: 999px; min-width: 2px; transition: width 0.4s ease; }
+.chart-bar-val { text-align: right; font-weight: 700; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+
+.donut { display: block; margin: 0 auto; }
+.donut .donut-center { fill: var(--text); font-size: 1.7rem; font-weight: 800; }
+.donut .donut-sub { fill: var(--muted); font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.arealine { display: block; overflow: visible; }
+
+.chart-legend { list-style: none; margin: 0.8rem 0 0; padding: 0; display: grid; gap: 0.35rem; }
+.chart-legend li { display: flex; align-items: center; gap: 0.5rem; font-size: 0.84rem; }
+.chart-legend-dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.chart-legend-label { color: var(--muted); }
+.chart-legend-val { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.chart-cols { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+.chart-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 0.8rem; }
+
+/* Security score hero */
+.score-hero { display: grid; grid-template-columns: auto 1fr; gap: 1.4rem; align-items: center; }
+.score-ring { position: relative; display: grid; place-items: center; }
+.score-num { position: absolute; text-align: center; }
+.score-num strong { font-size: 2.2rem; font-weight: 800; display: block; line-height: 1; }
+.score-num span { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; }
+.score-grade { font-size: 1.1rem; font-weight: 800; }
+.score-desc { color: var(--muted); font-size: 0.9rem; margin-top: 0.3rem; }
+.score-A { color: #4ade80; } .score-B { color: #86efac; } .score-C { color: #fcd34d; }
+.score-D { color: #fbbf24; } .score-F { color: #f87171; }
+
+/* Widget list rows (recently resolved, upcoming) */
+.wlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.wlist li { display: flex; align-items: center; gap: 0.6rem; font-size: 0.9rem; padding: 0.5rem 0; border-bottom: 1px solid var(--line); }
+.wlist li:last-child { border-bottom: 0; }
+.wlist .w-title { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wlist .w-meta { margin-left: auto; color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
+
+@media (max-width: 900px) { .chart-cols { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .score-hero { grid-template-columns: 1fr; text-align: center; } .score-ring { margin: 0 auto; } }
