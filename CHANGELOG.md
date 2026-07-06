@@ -1,5 +1,45 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 14 — Production Readiness (2026-07-07, branch `sprint-14-production-readiness`)
+
+CI/CD, observability, and ops docs. No customer-facing features / no new UI.
+
+### CI / CD (`.github/workflows/`)
+- **CI** — every PR + push to `main`: type-check, lint, unit tests, build
+  (Postgres service), and **full Playwright E2E** (Postgres + MinIO services;
+  report artifact on failure).
+- **CodeQL** (`javascript-typescript`, security-and-quality) + **gitleaks**
+  secret scan — PR + weekly. (Also enable GitHub native secret scanning +
+  push protection.)
+- **Dependabot** — weekly npm + github-actions updates (minor/patch grouped).
+- **Release** — a `vX.Y.Z` tag creates a GitHub Release (auto notes;
+  `-beta`/`-rc` → pre-release).
+- **Deploy staging** — Vercel preview on each `main` push.
+- **Deploy production** — triggered by publishing a Release; **approval-gated**
+  via the `production` Environment; runs migrations (build script), deploys
+  `--prod`, then smoke-checks `/api/health`.
+- **Backup verification** — daily dump-and-restore of production into a throwaway
+  Postgres with row-count assertions (`scripts/verify-backup.sh`).
+- **Uptime** — 15-min backstop probe of `/api/health`.
+
+### Observability
+- **Health endpoint** `GET /api/health` — DB check, storage status, version,
+  uptime; `200`/`503`, no auth, no sensitive data.
+- **Structured logging** (`src/lib/logger.ts`) — JSON-line logs; errors forward
+  to Sentry when configured. SMTP failures now logged structured.
+
+### Docs
+- `docs/RELEASE.md`, `docs/ROLLBACK.md` (code vs data rollback; expand/contract),
+  `docs/OBSERVABILITY.md` (health, logging, Sentry dashboards, uptime, signals).
+
+### Tests
+- E2E: `/api/health` returns `ok` with DB up, leaks nothing, `no-store`.
+
+### Requires (one-time GitHub setup — documented in RELEASE.md)
+- Environments `staging` + `production` (production **with required reviewers**).
+- Secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `PROD_DATABASE_URL`.
+- Enable native secret scanning + push protection; branch protection on `main`.
+
 ## Sprint 13 — Operations (2026-07-06, branch `sprint-13-operations`)
 
 Operations & account-management surface under `/dashboard/settings`.
