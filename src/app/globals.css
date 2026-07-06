@@ -479,6 +479,7 @@ html[data-theme="light"] .cvss-low { color: #15803d; }
 .pref-row:last-of-type { border-bottom: 0; }
 .pref-row input[type="checkbox"] { margin-top: 0.2rem; width: 16px; height: 16px; }
 
-/* Light-mode link contrast: accent (#38bdf8) fails on white; use a darker blue. */
-html[data-theme="light"] a { color: var(--primary-strong); }
+/* Light-mode link contrast: accent (#38bdf8) fails on white; use a darker blue.
+   Exclude button-styled links so they keep their own white-on-blue color. */
+html[data-theme="light"] a:not(.btn) { color: var(--primary-strong); }
 html[data-theme="light"] .comment-body .mention { color: var(--primary-strong); }

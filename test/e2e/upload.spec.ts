@@ -49,10 +49,10 @@ test.describe("evidence upload (MinIO/S3)", () => {
     await expect(page.getByLabel(/^file/i)).toBeVisible();
 
     await upload(page, "screenshot.png", "image/png", PNG_1x1);
-    await expect(page.getByRole("cell", { name: "screenshot.png" })).toBeVisible();
+    await expect(page.locator(".ev-name", { hasText: "screenshot.png" })).toBeVisible();
     expect(await objectsForFinding(fid)).toBe(1); // object really landed in the bucket
     // Image evidence renders an inline thumbnail via a presigned GET.
-    await expect(page.locator("img.evidence-thumb")).toBeVisible();
+    await expect(page.locator("img.ev-thumb-img")).toBeVisible();
     // Download entrypoint is present and points at the org-scoped evidence route.
     const dl = page.getByRole("link", { name: /download/i }).first();
     await expect(dl).toHaveAttribute("href", /\/api\/v1\/evidence\//);
@@ -79,11 +79,11 @@ test.describe("evidence upload (MinIO/S3)", () => {
     await login(page, USERS.consultant);
     const fid = await newFinding(page, "Upload Delete " + Date.now());
     await upload(page, "todelete.png", "image/png", PNG_1x1);
-    await expect(page.getByRole("cell", { name: "todelete.png" })).toBeVisible();
+    await expect(page.locator(".ev-name", { hasText: "todelete.png" })).toBeVisible();
     expect(await objectsForFinding(fid)).toBe(1);
 
-    await page.getByRole("button", { name: /remove/i }).first().click();
-    await expect(page.getByRole("cell", { name: "todelete.png" })).toHaveCount(0);
+    await page.locator(".ev-card").filter({ hasText: "todelete.png" }).getByRole("button", { name: /remove/i }).click();
+    await expect(page.locator(".ev-name", { hasText: "todelete.png" })).toHaveCount(0);
     expect(await objectsForFinding(fid)).toBe(0); // object gone from the bucket, not orphaned
   });
 
@@ -91,9 +91,9 @@ test.describe("evidence upload (MinIO/S3)", () => {
     await login(page, USERS.consultant);
     const fid = await newFinding(page, "Upload Multi " + Date.now());
     await upload(page, "one.png", "image/png", PNG_1x1);
-    await expect(page.getByRole("cell", { name: "one.png" })).toBeVisible();
+    await expect(page.locator(".ev-name", { hasText: "one.png" })).toBeVisible();
     await upload(page, "two.png", "image/png", PNG_1x1);
-    await expect(page.getByRole("cell", { name: "two.png" })).toBeVisible();
+    await expect(page.locator(".ev-name", { hasText: "two.png" })).toBeVisible();
     expect(await objectsForFinding(fid)).toBe(2);
   });
 });
