@@ -1,0 +1,26 @@
+name: Uptime check
+
+# Backstop uptime probe of /api/health. A dedicated monitor (Better Stack /
+# UptimeRobot, see docs/OBSERVABILITY.md) is the primary signal — GitHub cron is
+# delayed and coarse. This fails the run (→ notification) if the app is down.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe health endpoint
+        run: |
+          code=$(curl -s -o /tmp/health -w "%{http_code}" https://portal.jectar.one/api/health || echo 000)
+          echo "HTTP $code"; cat /tmp/health || true
+          if [ "$code" != "200" ]; then
+            echo "::error::portal.jectar.one/api/health returned $code"
+            exit 1
+          fi

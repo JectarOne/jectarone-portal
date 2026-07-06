@@ -1,0 +1,39 @@
+name: Backup verification
+
+# Daily: dump production and restore into a throwaway Postgres to prove the
+# backup is usable. Requires the `PROD_DATABASE_URL` secret (read access).
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # daily 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      restore:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: verify
+          POSTGRES_PASSWORD: verify
+          POSTGRES_DB: verify
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U verify -d verify"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Postgres 16 client
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update && sudo apt-get install -y postgresql-client-16
+      - name: Verify backup restores
+        run: bash scripts/verify-backup.sh
+        env:
+          SOURCE_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          TARGET_DATABASE_URL: postgresql://verify:verify@localhost:5432/verify

@@ -1,0 +1,48 @@
+name: Deploy production
+
+# Production deploys are GATED: the `production` GitHub Environment must have
+# required reviewers configured (Settings → Environments → production) so this
+# job pauses for manual approval before running. Triggered by publishing a
+# GitHub Release, or manually.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production # requires manual approval (configure required reviewers)
+      url: https://portal.jectar.one
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm i -g vercel@latest
+      - run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      # Build runs `prisma migrate deploy` (via the build script) against the prod DB.
+      - run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Post-deploy health smoke check
+        run: |
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" https://portal.jectar.one/api/health || echo 000)
+            if [ "$code" = "200" ]; then echo "Healthy."; exit 0; fi
+            echo "health=$code (attempt $i)"; sleep 10
+          done
+          echo "::error::Production health check failed — consider rollback (docs/ROLLBACK.md)."
+          exit 1
