@@ -1,5 +1,30 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 11 — Client Experience (2026-07-06, branch `sprint-11-client-experience`)
+
+Customer-facing polish. No infrastructure changes; download counts reuse the
+existing `ActivityLog` (no schema change). One commit per feature.
+
+### Added
+- **Rich dashboard**: a security-score hero (0–100 + grade, weighted by open +
+  overdue findings), key metrics (open, critical, assessments in progress,
+  overdue, resolved), and **recently-resolved** + **upcoming-assessment** lists.
+- **Charts** (dependency-free inline SVG, theme-aware): findings by severity
+  (donut), by status (bars), over time (6-month area), and assets by risk.
+- **Activity feed** (`/dashboard/activity`) + a reusable **Timeline** component;
+  assessment detail now renders its history as a timeline.
+- **Evidence gallery**: image thumbnails / file-type icons, size + uploader, and
+  a **per-file download count** (tracked via an `evidence.downloaded` activity
+  log in the download route).
+- **Dark/light mode**: `data-theme` toggle with a no-flash init script and
+  persisted preference; default dark.
+- Mobile polish (responsive metrics/tables/gallery); richer empty states.
+
+### Tests
+- `test/e2e/client-experience.spec.ts`: dashboard score/charts/widgets + axe,
+  activity feed, assessment timeline, theme toggle persistence, phone-viewport
+  render, evidence gallery + download-count increment.
+
 ## Sprint 10 — Release Blockers (2026-07-05, branch `sprint-10-release-blockers`)
 
 Closes the launch blockers for v1.0.0-beta. No new product features beyond the
