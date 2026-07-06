@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "JectarOne Client Portal — clients access their assessments, findings, and reports.",
+  "engines": { "node": ">=22" },
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && prisma migrate deploy && next build",

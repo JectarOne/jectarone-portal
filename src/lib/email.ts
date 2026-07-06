@@ -2,6 +2,7 @@ import "server-only";
 import nodemailer from "nodemailer";
 import fs from "node:fs";
 import path from "node:path";
+import { logger } from "./logger";
 
 // Transactional email. Uses authenticated SMTP when configured (the same
 // mailbox the marketing site sends from). In development/test without SMTP it
@@ -53,9 +54,9 @@ export async function sendMail(mail: Mail): Promise<void> {
         html: mail.html,
       });
     } catch (err) {
-      // Log the full Nodemailer error so Vercel Runtime Logs surface the code
+      // Structured log so Vercel Runtime Logs surface the Nodemailer code
       // (EAUTH, ECONNECTION, ETIMEDOUT, …) before rethrowing.
-      console.error("SMTP send failed:", err);
+      logger.error("SMTP send failed", err, { to: mail.to, subject: mail.subject, host: SMTP.host });
       throw err;
     }
     return;
