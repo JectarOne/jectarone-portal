@@ -1,5 +1,39 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 12 — Executive Reporting (2026-07-06, branch `sprint-12-executive-reporting`)
+
+Premium PDF reports, generated live from current data (`@react-pdf/renderer`).
+
+### Added — report sections
+- Branded **cover** (JectarOne shield + customer monogram, confidential pill),
+  a clickable **table of contents** (internal links + PDF outline bookmarks),
+  and **page numbers** on every page.
+- **Management summary** (security score + posture grade + top risks),
+  **executive summary**, **assessment scope**.
+- **Risk score & 5×5 risk matrix** (likelihood × impact, colored by risk band).
+- **CVSS analysis** (band distribution bars + average).
+- **OWASP Top 10**, **MITRE ATT&CK**, and **CWE** mapping tables.
+- **Assets summary** (type, identifier, finding count), **findings overview**
+  table, **detailed findings** (with CVSS/OWASP/CWE/MITRE/evidence metadata),
+  **evidence** summary, and **prioritized recommendations**.
+- Consistent professional typography/hierarchy.
+
+### Changed
+- Report route now loads all finding classification fields + evidence counts +
+  assets + computes the security score, and passes them to the document.
+- `src/lib/report.ts`: pure, unit-tested aggregation (CVSS bands, OWASP/CWE/
+  MITRE counts, prioritized recommendations, severity/risk-matrix counts).
+
+### Tests
+- Unit: cvss band boundaries, countBy aggregation, recommendation priority.
+- E2E: report returns a valid multi-section PDF (`%PDF-` magic + substantial
+  size); the route 500s if the document fails to render, so this gates it.
+
+### Notes
+- Evidence is summarized (counts per finding), not embedded as images, to keep
+  generation fast and reliable within serverless limits. Customer logo is a
+  generated monogram; a real uploaded logo would need an org-logo field (future).
+
 ## Sprint 11 — Client Experience (2026-07-06, branch `sprint-11-client-experience`)
 
 Customer-facing polish. No infrastructure changes; download counts reuse the
