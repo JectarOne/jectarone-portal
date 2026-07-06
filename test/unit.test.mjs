@@ -249,3 +249,42 @@ test("token expiry check", () => {
   assert.equal(isExpired(new Date(now - 1000), now), true);
   assert.equal(isExpired(new Date(now + 1000), now), false);
 });
+
+// Sprint 12 — report aggregation (mirror of src/lib/report.ts).
+function reportBand(x) { if (x == null) return "None"; if (x >= 9) return "Critical"; if (x >= 7) return "High"; if (x >= 4) return "Medium"; if (x > 0) return "Low"; return "None"; }
+function countBy(items, key) {
+  const m = new Map();
+  for (const f of items) { const v = f[key]; if (!v) continue; m.set(v, (m.get(v) ?? 0) + 1); }
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+}
+const SEV_RANK = { Critical: 5, High: 4, Medium: 3, Low: 2, Informational: 1 };
+function prioritized(items, max = 12) {
+  return items.filter((f) => f.remediation && f.remediation.trim())
+    .sort((a, b) => (SEV_RANK[b.severity] ?? 0) - (SEV_RANK[a.severity] ?? 0) || (b.cvssScore ?? 0) - (a.cvssScore ?? 0))
+    .slice(0, max);
+}
+
+test("report: cvss band boundaries", () => {
+  assert.equal(reportBand(9.8), "Critical");
+  assert.equal(reportBand(7), "High");
+  assert.equal(reportBand(4), "Medium");
+  assert.equal(reportBand(0.1), "Low");
+  assert.equal(reportBand(0), "None");
+  assert.equal(reportBand(null), "None");
+});
+
+test("report: countBy aggregates + sorts by count desc", () => {
+  const f = [{ owaspCategory: "A03 Injection" }, { owaspCategory: "A03 Injection" }, { owaspCategory: "A01 Broken Access Control" }, { owaspCategory: null }];
+  assert.deepEqual(countBy(f, "owaspCategory"), [["A03 Injection", 2], ["A01 Broken Access Control", 1]]);
+  assert.deepEqual(countBy([], "cwe"), []);
+});
+
+test("report: recommendations prioritized by severity then cvss", () => {
+  const f = [
+    { title: "low", severity: "Low", cvssScore: 3, remediation: "fix" },
+    { title: "crit", severity: "Critical", cvssScore: 9, remediation: "fix" },
+    { title: "high", severity: "High", cvssScore: 8, remediation: "fix" },
+    { title: "no-rem", severity: "Critical", cvssScore: 10, remediation: "" },
+  ];
+  assert.deepEqual(prioritized(f).map((x) => x.title), ["crit", "high", "low"]);
+});
