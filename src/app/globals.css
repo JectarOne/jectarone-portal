@@ -361,3 +361,33 @@ h3.sub { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; c
 
 @media (max-width: 900px) { .chart-cols { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .score-hero { grid-template-columns: 1fr; text-align: center; } .score-ring { margin: 0 auto; } }
+
+/* ---- Sprint 11: light theme (toggle; default is dark) ---- */
+html[data-theme="light"] {
+  --bg: #f1f5f9;
+  --bg-deep: #e9eef5;
+  --surface: #ffffff;
+  --text: #0f172a;
+  --muted: #475569;
+  --line: rgba(15, 23, 42, 0.12);
+  --line-strong: rgba(37, 99, 235, 0.35);
+}
+html[data-theme="light"] body {
+  background: radial-gradient(circle at 85% -5%, rgba(37, 99, 235, 0.10), transparent 32rem), var(--bg);
+}
+html[data-theme="light"] .btn-secondary { background: rgba(15, 23, 42, 0.04); }
+html[data-theme="light"] .side .nav-link:hover { background: rgba(15, 23, 42, 0.05); }
+html[data-theme="light"] .side .nav-link.active { background: rgba(37, 99, 235, 0.12); color: var(--primary-strong); }
+html[data-theme="light"] .chart-bar-track,
+html[data-theme="light"] .distbar { background: rgba(15, 23, 42, 0.08); }
+html[data-theme="light"] .auth-card { box-shadow: 0 18px 48px rgba(2, 8, 20, 0.12); }
+html[data-theme="light"] .card { box-shadow: 0 1px 2px rgba(2, 8, 20, 0.04); }
+
+/* Theme toggle button */
+.theme-toggle {
+  display: inline-flex; align-items: center; gap: 0.5rem; width: 100%;
+  border: 1px solid var(--line); border-radius: 10px; background: transparent;
+  color: var(--muted); padding: 0.5rem 0.7rem; font: inherit; font-weight: 600;
+  font-size: 0.85rem; cursor: pointer; margin-top: 0.5rem;
+}
+.theme-toggle:hover { color: var(--text); background: rgba(148,163,184,0.08); }

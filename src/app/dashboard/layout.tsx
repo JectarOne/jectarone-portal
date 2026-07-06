@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { logoutAction } from "@/actions/auth";
 import { roleLabel } from "@/lib/rbac";
 import { NavLink, Avatar } from "@/components/nav-link";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -33,6 +34,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <strong>{session.user.name}</strong>
           </span>
           {session.organization.name} · {roleLabel(session.role)}
+          <ThemeToggle />
           <form action={logoutAction} style={{ marginTop: "0.7rem" }}>
             <button className="btn btn-secondary btn-block" type="submit">Sign out</button>
           </form>
