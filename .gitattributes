@@ -1,0 +1,4 @@
+# Keep shell scripts and CI workflows LF so they run correctly on Linux runners.
+*.sh   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
