@@ -391,3 +391,25 @@ html[data-theme="light"] .card { box-shadow: 0 1px 2px rgba(2, 8, 20, 0.04); }
   font-size: 0.85rem; cursor: pointer; margin-top: 0.5rem;
 }
 .theme-toggle:hover { color: var(--text); background: rgba(148,163,184,0.08); }
+
+/* ---- Sprint 11: activity timeline ---- */
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline-item { position: relative; padding: 0 0 1rem 1.5rem; }
+.timeline-item::before {
+  content: ""; position: absolute; left: 5px; top: 14px; bottom: -2px;
+  width: 2px; background: var(--line);
+}
+.timeline-item:last-child::before { display: none; }
+.timeline-dot {
+  position: absolute; left: 0; top: 4px; width: 12px; height: 12px;
+  border-radius: 999px; border: 2px solid var(--surface); background: var(--muted);
+}
+.timeline-dot.t-create { background: var(--c-info); }
+.timeline-dot.t-resolve { background: var(--c-low); }
+.timeline-dot.t-remove { background: var(--c-critical); }
+.timeline-dot.t-change { background: var(--c-medium); }
+.timeline-dot.t-comment { background: var(--accent); }
+.timeline-body { font-size: 0.9rem; }
+.timeline-action { font-weight: 600; color: var(--text); }
+.timeline-detail { color: var(--muted); }
+.timeline-meta { color: var(--muted); font-size: 0.76rem; margin-top: 0.15rem; }

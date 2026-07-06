@@ -6,6 +6,7 @@ import { hasRole } from "@/lib/rbac";
 import { statusLabel, statusClass, typeLabel } from "@/lib/assessments";
 import { SEVERITIES, FINDING_STATUSES, severityWeight, label } from "@/lib/findings";
 import { SeverityBadge, FindingStatusBadge, RiskBadge } from "@/components/findings-ui";
+import { Timeline, type TimelineItem } from "@/components/timeline";
 import { setArchivedAction, deleteAssessmentAction } from "@/actions/assessments";
 
 function fmt(d: Date | null): string {
@@ -180,22 +181,17 @@ export default async function AssessmentOverviewPage({
         )}
       </div>
 
-      {/* Activity log */}
-      <div className="section-head"><h2>Activity</h2></div>
+      {/* Activity timeline */}
+      <div className="section-head"><h2>Timeline</h2></div>
       <div className="card">
-        {activities.length === 0 ? (
-          <div className="empty">No activity yet.</div>
-        ) : (
-          <ul className="activity">
-            {activities.map((ev) => (
-              <li key={ev.id}>
-                <span className="act-action">{ev.action}</span>
-                {ev.detail && <span className="act-detail"> — {ev.detail}</span>}
-                <span className="act-meta">{ev.user?.name ?? "system"} · {new Date(ev.createdAt).toISOString().slice(0, 16).replace("T", " ")}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <Timeline
+          items={activities.map((ev): TimelineItem => ({
+            action: ev.action,
+            detail: ev.detail,
+            user: ev.user?.name ?? null,
+            when: new Date(ev.createdAt).toISOString().slice(0, 16).replace("T", " "),
+          }))}
+        />
       </div>
     </>
   );
