@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ROLES } from "./rbac";
 import { ASSESSMENT_TYPES, ASSESSMENT_STATUSES } from "./assessments";
-import { SEVERITIES, FINDING_STATUSES, ALL_STATUSES, LIKELIHOODS, IMPACTS, ASSET_TYPES } from "./findings";
+import { SEVERITIES, FINDING_STATUSES, ALL_STATUSES, LIKELIHOODS, IMPACTS, ASSET_TYPES, TEMPLATE_CATEGORIES } from "./findings";
 
 const optionalText = (max: number) =>
   z.preprocess(
@@ -70,6 +70,24 @@ export const findingSchema = z.object({
   assetId: optionalText(60),
 });
 export type FindingInput = z.infer<typeof findingSchema>;
+
+export const findingTemplateSchema = z.object({
+  title: z.string().trim().min(3, "Enter a template title").max(200),
+  category: z.enum(TEMPLATE_CATEGORIES),
+  severity: z.enum(SEVERITIES).default("Medium"),
+  likelihood: z.enum(LIKELIHOODS).default("Medium"),
+  impact: z.enum(IMPACTS).default("Medium"),
+  cvssScore: optionalNumber(0, 10),
+  cvssVector: optionalText(160),
+  cwe: optionalText(40),
+  owaspCategory: optionalText(80),
+  mitreTechnique: optionalText(40),
+  description: optionalText(8000),
+  businessImpact: optionalText(6000),
+  remediation: optionalText(8000),
+  references: optionalText(2000),
+});
+export type FindingTemplateInput = z.infer<typeof findingTemplateSchema>;
 
 export const evidenceSchema = z.object({
   filename: z.string().trim().min(1, "Enter a filename").max(260),

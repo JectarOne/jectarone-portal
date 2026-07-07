@@ -48,6 +48,37 @@ model Organization {
   reports     Report[]
   comments    FindingComment[]
   apiTokens   ApiToken[]
+  findingTemplates FindingTemplate[]
+}
+
+// Reusable finding library — consultants create findings from templates with
+// CVSS/CWE/OWASP/MITRE defaults and remediation boilerplate pre-filled.
+// organizationId is set for org-private templates; null = built-in (seeded).
+model FindingTemplate {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  title          String
+  category       String        // e.g. "Web", "Network", "Cloud", "AD", "API", "Mobile"
+  severity       String        @default("Medium")
+  likelihood     String        @default("Medium")
+  impact         String        @default("Medium")
+  cvssScore      Float?
+  cvssVector     String?
+  cwe            String?
+  owaspCategory  String?
+  mitreTechnique String?
+  description    String?
+  businessImpact String?
+  remediation    String?
+  references     String?
+  createdById    String?
+  archivedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([organizationId, category])
+  @@index([organizationId, archivedAt])
 }
 
 // Tracked login sessions — enables the device/active-sessions list and remote

@@ -51,7 +51,13 @@ export const OWASP_CATEGORIES = [
   "A10 SSRF",
 ] as const;
 
+// Finding-template categories (reusable finding library).
+export const TEMPLATE_CATEGORIES = ["Web", "API", "Network", "Cloud", "ActiveDirectory", "Mobile", "Wireless", "Social", "Other"] as const;
+export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
+
 const LABELS: Record<string, string> = {
+  Wireless: "Wireless",
+  Social: "Social Engineering",
   InProgress: "In Progress",
   ReadyForValidation: "Ready for Validation",
   AcceptedRisk: "Accepted Risk",
