@@ -1,5 +1,30 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 17 — Engagements (2026-07-08, branch `sprint-17-engagements`)
+
+First roadmap build: the **Engagement** entity — the `Client → Engagement →
+Assessment` keystone the future-SaaS workflow hangs off.
+
+- **Model + migration 0010** (additive): `Engagement` table + a nullable
+  `Assessment.engagementId` (SetNull) — existing assessments are unaffected.
+- **Lifecycle:** Scoping → Active → Reporting → Remediation → Retest → Closed
+  (+ reopen), transition-enforced. MEMBER+ create/edit/status/archive,
+  ADMIN+ delete; org-scoped; activity-logged.
+- **UI:** `/dashboard/engagements` list (status + archived filters) + detail
+  (lifecycle control, linked assessments, "add assessment" → preselected) +
+  new/edit; nav link. Assessments gain an optional engagement selector and link
+  back to their engagement.
+- **Fix:** engagement status schema treats null/"" as absent (the form has no
+  status field) so create/edit default to Scoping instead of failing enum
+  validation.
+
+Tests: unit (lifecycle transitions) + E2E (create, advance, add-assessment
+preselect+link, client blocked).
+
+Roadmap position: unblocks retest workflow (P2), CRM (P8), and richer client
+collaboration (P10), which all attach to an engagement rather than a single
+assessment.
+
 ## Sprint 16 — AI Security Assistant (2026-07-08, branch `sprint-16-ai-assistant`)
 
 Consultant-facing AI assistance, provider-agnostic and grounded.
