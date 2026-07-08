@@ -21,11 +21,11 @@ export async function addCommentAction(findingId: string, _prev: CommentState, f
   const finding = await findingInOrg(findingId, session.orgId);
   if (!finding) return { error: "Finding not found." };
 
-  const parsed = commentSchema.safeParse({ body: formData.get("body") });
+  const parsed = commentSchema.safeParse({ body: formData.get("body"), visibility: formData.get("visibility") });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid comment." };
 
   await prisma.findingComment.create({
-    data: { organizationId: session.orgId, findingId, authorId: session.userId, body: parsed.data.body },
+    data: { organizationId: session.orgId, findingId, authorId: session.userId, body: parsed.data.body, visibility: parsed.data.visibility },
   });
   await logActivity({
     organizationId: session.orgId, userId: session.userId, action: "comment.added",

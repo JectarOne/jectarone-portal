@@ -5,7 +5,7 @@ import type { CommentState } from "@/actions/comments";
 import { deleteCommentAction } from "@/actions/comments";
 
 export function CommentItem({
-  id, authorName, when, edited, html, raw, canModify, editAction,
+  id, authorName, when, edited, html, raw, canModify, editAction, visibility, showVisibility,
 }: {
   id: string;
   authorName: string;
@@ -15,6 +15,8 @@ export function CommentItem({
   raw: string;
   canModify: boolean;
   editAction: (prev: CommentState, formData: FormData) => Promise<CommentState>;
+  visibility?: string;
+  showVisibility?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [state, formAction, pending] = useActionState(editAction, {} as CommentState);
@@ -23,6 +25,11 @@ export function CommentItem({
     <div className="comment">
       <div className="comment-head">
         <strong>{authorName}</strong>
+        {showVisibility && (
+          <span className={`badge ${visibility === "client" ? "rstate-published" : "rstate-draft"}`} title={visibility === "client" ? "Visible to the client" : "Internal — team only"}>
+            {visibility === "client" ? "Client-visible" : "Internal"}
+          </span>
+        )}
         <span className="comment-meta">{when}{edited ? " · edited" : ""}</span>
         {canModify && !editing && (
           <span className="comment-actions">

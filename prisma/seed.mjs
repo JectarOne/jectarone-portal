@@ -268,10 +268,13 @@ async function main() {
 
   // ---- Comments ----
   await prisma.findingComment.create({
-    data: { organizationId: northwind.id, findingId: findings[0].id, authorId: consultant.id, body: "Confirmed exploitable. Recommend parameterized queries. cc @admin", createdAt: daysAgo(14) },
+    data: { organizationId: northwind.id, findingId: findings[0].id, authorId: consultant.id, visibility: "internal", body: "Confirmed exploitable. Recommend parameterized queries. cc @admin", createdAt: daysAgo(14) },
   });
   await prisma.findingComment.create({
-    data: { organizationId: northwind.id, findingId: findings[0].id, authorId: admin.id, body: "Prioritized as **Critical**. Please schedule the fix this sprint.", createdAt: daysAgo(13) },
+    data: { organizationId: northwind.id, findingId: findings[0].id, authorId: admin.id, visibility: "internal", body: "Prioritized as **Critical**. Please schedule the fix this sprint.", createdAt: daysAgo(13) },
+  });
+  await prisma.findingComment.create({
+    data: { organizationId: northwind.id, findingId: findings[0].id, authorId: consultant.id, visibility: "client", body: "We recommend deploying the parameterized-query fix and re-testing. Happy to walk your team through it.", createdAt: daysAgo(12) },
   });
   await prisma.activityLog.create({
     data: { organizationId: northwind.id, userId: consultant.id, action: "comment.added", assessmentId: aWeb.id, findingId: findings[0].id, createdAt: daysAgo(14) },

@@ -141,6 +141,10 @@ export const acceptRiskSchema = z.object({
 
 export const commentSchema = z.object({
   body: z.string().trim().min(1, "Comment cannot be empty").max(8000),
+  visibility: z.preprocess(
+    (v) => (v === "client" ? "client" : "internal"),
+    z.enum(["internal", "client"]).default("internal")
+  ),
 });
 export type CommentInput = z.infer<typeof commentSchema>;
 

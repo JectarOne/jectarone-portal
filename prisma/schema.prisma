@@ -319,6 +319,7 @@ model FindingComment {
   finding        Finding      @relation(fields: [findingId], references: [id], onDelete: Cascade)
 
   body           String       // Markdown; @mentions parsed at render
+  visibility     String       @default("internal") // "internal" (team only) | "client" (client-visible)
   authorId       String?
   author         User?        @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
 

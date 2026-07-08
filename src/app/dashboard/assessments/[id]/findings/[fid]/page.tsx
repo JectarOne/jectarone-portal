@@ -51,7 +51,11 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
   const [assets, members, comments, timeline, revisions] = await Promise.all([
     prisma.asset.findMany({ where: { organizationId: session.orgId, archivedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.membership.findMany({ where: { organizationId: session.orgId }, include: { user: { select: { id: true, name: true } } } }),
-    prisma.findingComment.findMany({ where: { findingId: fid, deletedAt: null }, orderBy: { createdAt: "asc" }, include: { author: { select: { name: true } } } }),
+    prisma.findingComment.findMany({
+      // CLIENT only sees client-visible comments; MEMBER+ sees internal + client.
+      where: { findingId: fid, deletedAt: null, ...(hasRole(session.role, "MEMBER") ? {} : { visibility: "client" }) },
+      orderBy: { createdAt: "asc" }, include: { author: { select: { name: true } } },
+    }),
     prisma.activityLog.findMany({ where: { organizationId: session.orgId, findingId: fid }, orderBy: { createdAt: "asc" }, include: { user: { select: { name: true } } } }),
     // Field-level edit history (MEMBER+ only — clients don't see internal churn).
     hasRole(session.role, "MEMBER")
@@ -276,6 +280,8 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
             raw={c.body}
             canModify={c.authorId === session.userId || canDelete}
             editAction={editCommentAction.bind(null, c.id)}
+            visibility={c.visibility}
+            showVisibility={canWrite}
           />
         ))}
         {canWrite && <div style={{ marginTop: comments.length ? "1rem" : 0 }}><CommentForm action={boundAddComment} /></div>}
