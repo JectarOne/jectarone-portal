@@ -22,6 +22,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </span>
         <nav className="side-nav" aria-label="Primary">
           <NavLink href="/dashboard">Overview</NavLink>
+          <NavLink href="/dashboard/engagements">Engagements</NavLink>
           <NavLink href="/dashboard/assessments">Assessments</NavLink>
           <NavLink href="/dashboard/findings">Findings</NavLink>
           <NavLink href="/dashboard/templates">Templates</NavLink>

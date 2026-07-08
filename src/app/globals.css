@@ -176,6 +176,14 @@ a:hover { text-decoration: underline; }
 .status-review { background: rgba(245,158,11,0.16); color: #fcd34d; }
 .status-delivered { background: rgba(34,197,94,0.16); color: #86efac; }
 
+/* Engagement lifecycle badges */
+.status-badge.estatus-scoping { background: rgba(148,163,184,0.16); color: #cbd5e1; }
+.status-badge.estatus-active { background: rgba(56,189,248,0.14); color: var(--accent); }
+.status-badge.estatus-reporting { background: rgba(234,179,8,0.16); color: #fde68a; }
+.status-badge.estatus-remediation { background: rgba(245,158,11,0.16); color: #fcd34d; }
+.status-badge.estatus-retest { background: rgba(168,85,247,0.16); color: #d8b4fe; }
+.status-badge.estatus-closed { background: rgba(34,197,94,0.16); color: #86efac; }
+
 /* Review / publication lifecycle badges */
 .badge.rstate-draft { background: rgba(148,163,184,0.16); color: #cbd5e1; }
 .badge.rstate-inreview { background: rgba(234,179,8,0.16); color: #fde68a; }

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ROLES } from "./rbac";
 import { ASSESSMENT_TYPES, ASSESSMENT_STATUSES } from "./assessments";
+import { ENGAGEMENT_STATUSES } from "./engagements";
 import { SEVERITIES, FINDING_STATUSES, ALL_STATUSES, LIKELIHOODS, IMPACTS, ASSET_TYPES, TEMPLATE_CATEGORIES, REVIEW_STATES } from "./findings";
 
 const optionalText = (max: number) =>
@@ -25,6 +26,7 @@ export const assessmentSchema = z
     leadConsultant: optionalText(160),
     executiveSummary: optionalText(8000),
     notes: optionalText(8000),
+    engagementId: optionalText(60),
   })
   .refine(
     (d) => !d.startDate || !d.endDate || d.endDate >= d.startDate,
@@ -32,6 +34,28 @@ export const assessmentSchema = z
   );
 
 export type AssessmentInput = z.infer<typeof assessmentSchema>;
+
+export const engagementSchema = z
+  .object({
+    name: z.string().trim().min(2, "Enter an engagement name").max(160),
+    clientName: z.string().trim().min(2, "Enter a client name").max(160),
+    // The form has no status field on create (status is managed via the
+    // lifecycle action) — formData.get("status") is null, and z.default() only
+    // fills for undefined. Treat null/empty as absent so it defaults to Scoping.
+    status: z.preprocess(
+      (v) => (v === null || v === undefined || v === "" ? undefined : v),
+      z.enum(ENGAGEMENT_STATUSES).default("Scoping")
+    ),
+    scope: optionalText(4000),
+    startDate: optionalDate,
+    endDate: optionalDate,
+    leadConsultant: optionalText(160),
+  })
+  .refine((d) => !d.startDate || !d.endDate || d.endDate >= d.startDate, {
+    message: "End date cannot be before the start date.",
+    path: ["endDate"],
+  });
+export type EngagementInput = z.infer<typeof engagementSchema>;
 
 const optionalNumber = (min: number, max: number) =>
   z.preprocess(

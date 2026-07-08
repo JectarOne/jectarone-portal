@@ -17,6 +17,12 @@ export default async function EditAssessmentPage({ params }: { params: Promise<{
   const a = await prisma.assessment.findUnique({ where: { id } });
   if (!a || a.organizationId !== session.orgId) notFound();
 
+  const engagements = await prisma.engagement.findMany({
+    where: { organizationId: session.orgId, archivedAt: null },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, name: true },
+  });
+
   const boundUpdate = updateAssessmentAction.bind(null, a.id);
 
   return (
@@ -35,10 +41,12 @@ export default async function EditAssessmentPage({ params }: { params: Promise<{
         action={boundUpdate}
         submitLabel="Save changes"
         cancelHref={`/dashboard/assessments/${a.id}`}
+        engagements={engagements}
         values={{
           clientName: a.clientName, type: a.type, status: a.status,
           scope: a.scope, startDate: toDateInput(a.startDate), endDate: toDateInput(a.endDate),
           leadConsultant: a.leadConsultant, executiveSummary: a.executiveSummary, notes: a.notes,
+          engagementId: a.engagementId,
         }}
       />
     </>

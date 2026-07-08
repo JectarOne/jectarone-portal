@@ -19,7 +19,15 @@ const initialData = (formData: FormData) => ({
   leadConsultant: formData.get("leadConsultant"),
   executiveSummary: formData.get("executiveSummary"),
   notes: formData.get("notes"),
+  engagementId: formData.get("engagementId"),
 });
+
+/** Resolve an optional engagementId, keeping only ids that belong to the caller's org. */
+async function resolveEngagementId(engagementId: string | undefined, orgId: string): Promise<string | null> {
+  if (!engagementId) return null;
+  const e = await prisma.engagement.findUnique({ where: { id: engagementId } });
+  return e && e.organizationId === orgId ? e.id : null;
+}
 
 function firstError(err: import("zod").ZodError): AssessmentState {
   const fieldErrors: Record<string, string> = {};
@@ -39,11 +47,13 @@ export async function createAssessmentAction(_prev: AssessmentState, formData: F
   const parsed = assessmentSchema.safeParse(initialData(formData));
   if (!parsed.success) return firstError(parsed.error);
   const d = parsed.data;
+  const engagementId = await resolveEngagementId(d.engagementId, session.orgId);
 
   const created = await prisma.assessment.create({
     data: {
       organizationId: session.orgId,
       createdById: session.userId,
+      engagementId,
       clientName: d.clientName,
       type: d.type,
       status: d.status,
@@ -80,10 +90,12 @@ export async function updateAssessmentAction(id: string, _prev: AssessmentState,
   const parsed = assessmentSchema.safeParse(initialData(formData));
   if (!parsed.success) return firstError(parsed.error);
   const d = parsed.data;
+  const engagementId = await resolveEngagementId(d.engagementId, session.orgId);
 
   await prisma.assessment.update({
     where: { id },
     data: {
+      engagementId,
       clientName: d.clientName,
       type: d.type,
       status: d.status,

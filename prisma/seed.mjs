@@ -42,6 +42,7 @@ async function wipe() {
   await prisma.finding.deleteMany();
   await prisma.asset.deleteMany();
   await prisma.assessment.deleteMany();
+  await prisma.engagement.deleteMany();
   await prisma.loginAttempt.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.organization.deleteMany();
@@ -158,11 +159,22 @@ async function main() {
     }));
   }
 
+  // ---- Engagement (Northwind) — groups the web + network assessments ----
+  const eng = await prisma.engagement.create({
+    data: {
+      id: "nw-eng", // stable id for E2E
+      organizationId: northwind.id, name: "Q3 External Assessment", clientName: "Northwind Corp",
+      status: "Active", scope: "External web app, public API, and internal network.",
+      leadConsultant: "Karim Idrissi", startDate: daysAgo(25), createdById: consultant.id,
+    },
+  });
+
   // ---- Assessments (Northwind) ----
   const aWeb = await prisma.assessment.create({
     data: {
       id: "nw-web", // stable id for E2E navigation / RBAC tests
-      organizationId: northwind.id, clientName: "Northwind Corp", type: "Web", status: "InProgress",
+      organizationId: northwind.id, engagementId: eng.id,
+      clientName: "Northwind Corp", type: "Web", status: "InProgress",
       scope: "External web application and public API.", leadConsultant: "Karim Idrissi",
       executiveSummary: "Assessment of the customer-facing web application and its supporting API.",
       startDate: daysAgo(20), createdById: consultant.id,

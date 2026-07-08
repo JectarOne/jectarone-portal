@@ -419,3 +419,24 @@ test("AI provider selection: explicit, then key-based, then mock", () => {
   assert.equal(aiProvider({ OPENAI_API_KEY: "x" }), "openai");
   assert.equal(aiProvider({}), "mock");
 });
+
+// Mirror of src/lib/engagements.ts lifecycle transitions.
+const ENG_TRANSITIONS = {
+  Scoping: ["Active"],
+  Active: ["Reporting", "Scoping"],
+  Reporting: ["Remediation", "Active"],
+  Remediation: ["Retest", "Reporting"],
+  Retest: ["Closed", "Remediation"],
+  Closed: ["Active"],
+};
+const engCanTransition = (from, to) => (ENG_TRANSITIONS[from] ?? []).includes(to);
+test("engagement lifecycle allows valid forward + reopen transitions", () => {
+  assert.equal(engCanTransition("Scoping", "Active"), true);
+  assert.equal(engCanTransition("Retest", "Closed"), true);
+  assert.equal(engCanTransition("Closed", "Active"), true); // reopen
+});
+test("engagement lifecycle rejects illegal jumps", () => {
+  assert.equal(engCanTransition("Scoping", "Closed"), false);
+  assert.equal(engCanTransition("Active", "Retest"), false);
+  assert.equal(engCanTransition("Closed", "Reporting"), false);
+});

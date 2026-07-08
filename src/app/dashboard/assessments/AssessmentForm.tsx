@@ -15,6 +15,7 @@ type Values = {
   leadConsultant?: string | null;
   executiveSummary?: string | null;
   notes?: string | null;
+  engagementId?: string | null;
 };
 
 export function AssessmentForm({
@@ -22,11 +23,13 @@ export function AssessmentForm({
   values = {},
   submitLabel,
   cancelHref,
+  engagements = [],
 }: {
   action: (prev: AssessmentState, formData: FormData) => Promise<AssessmentState>;
   values?: Values;
   submitLabel: string;
   cancelHref: string;
+  engagements?: { id: string; name: string }[];
 }) {
   const [state, formAction, pending] = useActionState(action, {} as AssessmentState);
   const fe = state.fieldErrors ?? {};
@@ -65,6 +68,14 @@ export function AssessmentForm({
           <label htmlFor="endDate">End date</label>
           <input id="endDate" name="endDate" type="date" defaultValue={values.endDate ?? ""} />
           {fe.endDate && <span className="hint">{fe.endDate}</span>}
+        </div>
+
+        <div className="field span-2">
+          <label htmlFor="engagementId">Engagement</label>
+          <select id="engagementId" name="engagementId" defaultValue={values.engagementId ?? ""}>
+            <option value="">— none —</option>
+            {engagements.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+          </select>
         </div>
 
         <div className="field span-2">

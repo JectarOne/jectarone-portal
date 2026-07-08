@@ -27,7 +27,7 @@ export default async function AssessmentOverviewPage({
 
   const a = await prisma.assessment.findUnique({
     where: { id },
-    include: { createdBy: { select: { name: true } } },
+    include: { createdBy: { select: { name: true } }, engagement: { select: { id: true, name: true } } },
   });
   if (!a || a.organizationId !== session.orgId) notFound();
 
@@ -82,6 +82,7 @@ export default async function AssessmentOverviewPage({
             {a.archivedAt && <span className="status-badge status-draft">Archived</span>}
           </h1>
           <p className="muted" style={{ fontSize: "0.82rem" }}>
+            {a.engagement && <>Engagement: <Link href={`/dashboard/engagements/${a.engagement.id}`}>{a.engagement.name}</Link> · </>}
             {typeLabel(a.type)} · created by {a.createdBy?.name ?? "—"} · updated {fmt(a.updatedAt)}
           </p>
         </div>
