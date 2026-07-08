@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { hasRole } from "@/lib/rbac";
 import { SEVERITIES, FINDING_STATUSES, CLOSED_STATUSES, severityWeight, label } from "@/lib/findings";
 import { isOverdue } from "@/lib/sla";
 import { SeverityBadge, FindingStatusBadge, CvssBadge, EmptyState } from "@/components/findings-ui";
@@ -20,6 +21,8 @@ export default async function FindingsPage({
   const q = (sp.q ?? "").trim();
 
   const where: Record<string, unknown> = { organizationId: session.orgId, archivedAt: null };
+  // CLIENT (read-only) only sees published findings — internal review states are hidden.
+  if (!hasRole(session.role, "MEMBER")) where.reviewState = "Published";
   if (sp.severity && (SEVERITIES as readonly string[]).includes(sp.severity)) where.severity = sp.severity;
   if (sp.status && (FINDING_STATUSES as readonly string[]).includes(sp.status)) where.status = sp.status;
   if (sp.assignee) where.assigneeId = sp.assignee;

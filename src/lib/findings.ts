@@ -29,6 +29,24 @@ export const STATUS_TRANSITIONS: Record<string, string[]> = {
   Verified: ["Open", "Resolved"],
 };
 
+// Review / publication lifecycle (separate from remediation `status`).
+// CLIENT role only ever sees findings whose reviewState is "Published".
+export const REVIEW_STATES = ["Draft", "InReview", "Approved", "Published", "Reopened"] as const;
+export type ReviewState = (typeof REVIEW_STATES)[number];
+
+/** Allowed review-lifecycle transitions. */
+export const REVIEW_TRANSITIONS: Record<string, string[]> = {
+  Draft: ["InReview"],
+  InReview: ["Approved", "Draft"],       // approve, or send back for edits
+  Approved: ["Published", "InReview"],   // publish, or pull back
+  Published: ["Reopened"],               // reopen a delivered finding
+  Reopened: ["InReview", "Draft"],       // route back into the flow
+};
+
+export function reviewStateClass(s: string): string {
+  return `rstate-${String(s).toLowerCase()}`;
+}
+
 export const LIKELIHOODS = ["VeryLow", "Low", "Medium", "High", "VeryHigh"] as const;
 export type Likelihood = (typeof LIKELIHOODS)[number];
 
@@ -58,6 +76,7 @@ export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
 const LABELS: Record<string, string> = {
   Wireless: "Wireless",
   Social: "Social Engineering",
+  InReview: "In Review",
   InProgress: "In Progress",
   ReadyForValidation: "Ready for Validation",
   AcceptedRisk: "Accepted Risk",

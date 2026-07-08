@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ROLES } from "./rbac";
 import { ASSESSMENT_TYPES, ASSESSMENT_STATUSES } from "./assessments";
-import { SEVERITIES, FINDING_STATUSES, ALL_STATUSES, LIKELIHOODS, IMPACTS, ASSET_TYPES, TEMPLATE_CATEGORIES } from "./findings";
+import { SEVERITIES, FINDING_STATUSES, ALL_STATUSES, LIKELIHOODS, IMPACTS, ASSET_TYPES, TEMPLATE_CATEGORIES, REVIEW_STATES } from "./findings";
 
 const optionalText = (max: number) =>
   z.preprocess(
@@ -120,6 +120,10 @@ const optionalDateField = z.preprocess(
 
 export const statusChangeSchema = z.object({
   status: z.enum(FINDING_STATUSES),
+});
+
+export const reviewStateSchema = z.object({
+  reviewState: z.enum(REVIEW_STATES),
 });
 
 export const assignSchema = z.object({

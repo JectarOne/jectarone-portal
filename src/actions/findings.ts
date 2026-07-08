@@ -6,10 +6,10 @@ import type { ZodError } from "zod";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { hasRole } from "@/lib/rbac";
-import { findingSchema, statusChangeSchema, assignSchema, acceptRiskSchema, dueDateSchema } from "@/lib/validation";
+import { findingSchema, statusChangeSchema, assignSchema, acceptRiskSchema, dueDateSchema, reviewStateSchema } from "@/lib/validation";
 import { logActivity } from "@/lib/activity";
 import { computeDueDate } from "@/lib/sla";
-import { STATUS_TRANSITIONS } from "@/lib/findings";
+import { STATUS_TRANSITIONS, REVIEW_TRANSITIONS, label } from "@/lib/findings";
 
 export type FindingState = { error?: string; fieldErrors?: Record<string, string> };
 
@@ -221,6 +221,31 @@ export async function changeStatusAction(findingId: string, formData: FormData):
   await logActivity({
     organizationId: session.orgId, userId: session.userId, action: "finding.status_changed",
     detail: `${existing.status} → ${next}`, assessmentId: existing.assessmentId, findingId,
+  });
+  revalidatePath(`/dashboard/assessments/${existing.assessmentId}/findings/${findingId}`);
+  revalidatePath(`/dashboard/assessments/${existing.assessmentId}`);
+}
+
+/** Advance the review/publication lifecycle (Draft→InReview→Approved→Published, or Reopen). */
+export async function changeReviewStateAction(findingId: string, formData: FormData): Promise<void> {
+  const session = await getSession();
+  if (!session || !hasRole(session.role, "MEMBER")) return; // CLIENT is read-only
+  const existing = await findingInOrg(findingId, session.orgId);
+  if (!existing) return;
+
+  const parsed = reviewStateSchema.safeParse({ reviewState: formData.get("reviewState") });
+  if (!parsed.success) return;
+  const next = parsed.data.reviewState;
+  if (next === existing.reviewState) return;
+
+  // Enforce allowed transitions.
+  const allowed = REVIEW_TRANSITIONS[existing.reviewState] ?? [];
+  if (!allowed.includes(next)) return;
+
+  await prisma.finding.update({ where: { id: findingId }, data: { reviewState: next } });
+  await logActivity({
+    organizationId: session.orgId, userId: session.userId, action: "finding.review_changed",
+    detail: `${label(existing.reviewState)} → ${label(next)}`, assessmentId: existing.assessmentId, findingId,
   });
   revalidatePath(`/dashboard/assessments/${existing.assessmentId}/findings/${findingId}`);
   revalidatePath(`/dashboard/assessments/${existing.assessmentId}`);

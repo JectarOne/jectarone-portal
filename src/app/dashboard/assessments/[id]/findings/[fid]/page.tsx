@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hasRole } from "@/lib/rbac";
-import { label, FINDING_STATUSES, isClosed } from "@/lib/findings";
+import { label, FINDING_STATUSES, isClosed, REVIEW_TRANSITIONS, reviewStateClass } from "@/lib/findings";
 import { isOverdue, daysUntilDue } from "@/lib/sla";
 import { renderMarkdown } from "@/lib/markdown";
 import { storageConfigured, presignDownload } from "@/lib/storage";
@@ -11,7 +11,7 @@ import { SeverityBadge, FindingStatusBadge, RiskMatrix } from "@/components/find
 import { EvidenceGallery, type EvidenceItem } from "@/components/evidence-gallery";
 import {
   updateFindingAction, setFindingArchivedAction, deleteFindingAction,
-  changeStatusAction, assignFindingAction, setDueDateAction, acceptRiskAction,
+  changeStatusAction, assignFindingAction, setDueDateAction, acceptRiskAction, changeReviewStateAction,
 } from "@/actions/findings";
 import { addEvidenceAction, deleteEvidenceAction } from "@/actions/evidence";
 import { addCommentAction, editCommentAction } from "@/actions/comments";
@@ -44,6 +44,8 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
     },
   });
   if (!f || f.organizationId !== session.orgId || f.assessmentId !== id) notFound();
+  // CLIENT (read-only) may only view published findings — internal review states are hidden.
+  if (!hasRole(session.role, "MEMBER") && f.reviewState !== "Published") notFound();
 
   const [assets, members, comments, timeline] = await Promise.all([
     prisma.asset.findMany({ where: { organizationId: session.orgId, archivedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -78,6 +80,7 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
   const boundUpdate = updateFindingAction.bind(null, f.id);
   const boundAddEvidence = addEvidenceAction.bind(null, f.id);
   const boundStatus = changeStatusAction.bind(null, f.id);
+  const boundReview = changeReviewStateAction.bind(null, f.id);
   const boundAssign = assignFindingAction.bind(null, f.id);
   const boundDue = setDueDateAction.bind(null, f.id);
   const boundAccept = acceptRiskAction.bind(null, f.id);
@@ -95,6 +98,7 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
             {f.title}
             <SeverityBadge severity={f.severity} />
             <FindingStatusBadge status={f.status} />
+            <span className={`badge ${reviewStateClass(f.reviewState)}`} title="Review / publication state">{label(f.reviewState)}</span>
             {overdue && <span className="badge risk-critical">Overdue</span>}
             {f.archivedAt && <span className="badge fstatus-archived">Archived</span>}
           </h1>
@@ -131,6 +135,18 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
               <button className="btn btn-secondary" type="submit">Update</button>
             </form>
           ) : <FindingStatusBadge status={f.status} />}
+        </div>
+        <div className="card">
+          <h3 className="sub">Review</h3>
+          {canWrite && (REVIEW_TRANSITIONS[f.reviewState]?.length ?? 0) > 0 ? (
+            <form action={boundReview} className="inline-form">
+              <span className={`badge ${reviewStateClass(f.reviewState)}`}>{label(f.reviewState)}</span>
+              <select name="reviewState" defaultValue={REVIEW_TRANSITIONS[f.reviewState][0]} aria-label="Next review state">
+                {REVIEW_TRANSITIONS[f.reviewState].map((s) => <option key={s} value={s}>{label(s)}</option>)}
+              </select>
+              <button className="btn btn-secondary" type="submit">Set</button>
+            </form>
+          ) : <span className={`badge ${reviewStateClass(f.reviewState)}`}>{label(f.reviewState)}</span>}
         </div>
         <div className="card">
           <h3 className="sub">Assignee</h3>

@@ -33,6 +33,8 @@ export default async function AssessmentOverviewPage({
   // Findings (org + assessment scoped) with filters
   const q = (sp.q ?? "").trim();
   const where: Record<string, unknown> = { organizationId: session.orgId, assessmentId: id };
+  // CLIENT (read-only) only sees published findings.
+  if (!hasRole(session.role, "MEMBER")) where.reviewState = "Published";
   if (sp.severity && (SEVERITIES as readonly string[]).includes(sp.severity)) where.severity = sp.severity;
   if (sp.status && (FINDING_STATUSES as readonly string[]).includes(sp.status)) where.status = sp.status;
   if (q) {

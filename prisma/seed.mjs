@@ -195,15 +195,15 @@ async function main() {
 
   // ---- Findings of every severity (Northwind, on aWeb) ----
   const findingSpecs = [
-    { severity: "Critical", likelihood: "VeryHigh", impact: "VeryHigh", status: "Open", title: "SQL injection in login form",
+    { severity: "Critical", likelihood: "VeryHigh", impact: "VeryHigh", status: "Open", reviewState: "Published", title: "SQL injection in login form",
       cvssScore: 9.8, cvssVector: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H", cwe: "CWE-89", owaspCategory: "A03 Injection", mitreTechnique: "T1190", affectedAsset: "https://app.northwind.test/login", affectedAssetType: "URL" },
-    { severity: "High", likelihood: "High", impact: "High", status: "InProgress", title: "Broken access control on report export",
+    { severity: "High", likelihood: "High", impact: "High", status: "InProgress", reviewState: "Published", title: "Broken access control on report export",
       cvssScore: 8.1, cwe: "CWE-284", owaspCategory: "A01 Broken Access Control", affectedAsset: "api.northwind.test" },
-    { severity: "Medium", likelihood: "Medium", impact: "Medium", status: "ReadyForValidation", title: "Missing security headers",
+    { severity: "Medium", likelihood: "Medium", impact: "Medium", status: "ReadyForValidation", reviewState: "InReview", title: "Missing security headers",
       cvssScore: 5.3, cwe: "CWE-693", owaspCategory: "A05 Security Misconfiguration", affectedAsset: "https://app.northwind.test" },
-    { severity: "Low", likelihood: "Low", impact: "Low", status: "Resolved", title: "Verbose error messages",
+    { severity: "Low", likelihood: "Low", impact: "Low", status: "Resolved", reviewState: "Draft", title: "Verbose error messages",
       cvssScore: 3.1, cwe: "CWE-209", owaspCategory: "A09 Logging Failures" },
-    { severity: "Informational", likelihood: "VeryLow", impact: "VeryLow", status: "FalsePositive", title: "Server banner discloses version",
+    { severity: "Informational", likelihood: "VeryLow", impact: "VeryLow", status: "FalsePositive", reviewState: "Approved", title: "Server banner discloses version",
       cvssScore: 0, cwe: "CWE-200" },
   ];
   const findings = [];
@@ -217,6 +217,7 @@ async function main() {
         businessImpact: "Impact assessed against the asset's role.",
         remediation: "Apply the recommended fix and re-test.",
         severity: s.severity, likelihood: s.likelihood, impact: s.impact, status: s.status,
+        reviewState: s.reviewState ?? "Draft",
         cvssScore: s.cvssScore ?? null, cvssVector: s.cvssVector ?? null,
         cwe: s.cwe ?? null, owaspCategory: s.owaspCategory ?? null, mitreTechnique: s.mitreTechnique ?? null,
         affectedAsset: s.affectedAsset ?? null, affectedAssetType: s.affectedAssetType ?? null,

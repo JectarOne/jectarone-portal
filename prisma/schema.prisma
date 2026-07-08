@@ -223,6 +223,10 @@ model Finding {
   // (legacy Sprint 3 values Fixed/Verified are still accepted and treated as closed for backward compatibility)
   status           String     @default("Open")
 
+  // Sprint 7 review/publication lifecycle (separate from remediation `status`):
+  // Draft | InReview | Approved | Published | Reopened. CLIENT role only sees Published.
+  reviewState      String     @default("Draft")
+
   createdById      String?
   createdBy        User?      @relation("FindingCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
