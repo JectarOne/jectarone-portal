@@ -165,7 +165,10 @@ export default async function AssessmentOverviewPage({
       {/* Reports */}
       <div className="section-head">
         <h2>Reports <span className="count">{reports.length}</span></h2>
-        <a className="btn btn-primary" href={`/dashboard/assessments/${a.id}/report`}>Download PDF report</a>
+        <span style={{ display: "inline-flex", gap: "0.5rem" }}>
+          {hasRole(session.role, "MEMBER") && <Link className="btn btn-secondary" href={`/dashboard/assessments/${a.id}/report/builder`}>Report builder</Link>}
+          <a className="btn btn-primary" href={`/dashboard/assessments/${a.id}/report`}>Download PDF report</a>
+        </span>
       </div>
       <div className="card">
         {reports.length === 0 ? (

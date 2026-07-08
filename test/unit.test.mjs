@@ -348,3 +348,38 @@ test("isAcceptanceExpired only for AcceptedRisk with a past expiry", () => {
   assert.equal(isAcceptanceExpired("AcceptedRisk", null, now), false);
   assert.equal(isAcceptanceExpired("Open", new Date("2020-01-01"), now), false);
 });
+
+// Mirror of src/lib/report-config.ts parse/order semantics.
+const RC_ORDER = ["mgmt","exec","scope","risk","cvss","owasp","mitre","cwe","assets","overview","details","evidence","recs","appendix"];
+const RC_LOCKED = new Set(["overview","details"]);
+function rcParse(json) {
+  const base = { order: [...RC_ORDER], disabled: [], customRecommendations: null, appendix: null };
+  if (!json) return base;
+  let raw; try { raw = JSON.parse(json); } catch { return base; }
+  const known = new Set(RC_ORDER);
+  const order = [];
+  for (const k of raw.order ?? []) if (known.has(k) && !order.includes(k)) order.push(k);
+  for (const k of RC_ORDER) if (!order.includes(k)) order.push(k);
+  const disabled = (raw.disabled ?? []).filter((k) => known.has(k) && !RC_LOCKED.has(k));
+  return { order, disabled, customRecommendations: raw.customRecommendations ?? null, appendix: raw.appendix ?? null };
+}
+function rcEnabled(cfg) { const off = new Set(cfg.disabled.filter((k) => !RC_LOCKED.has(k))); return cfg.order.filter((k) => !off.has(k)); }
+
+test("report config: invalid JSON falls back to default", () => {
+  const c = rcParse("not json");
+  assert.equal(c.order.length, RC_ORDER.length);
+  assert.deepEqual(c.disabled, []);
+});
+test("report config: reorder is preserved, missing keys appended", () => {
+  const c = rcParse(JSON.stringify({ order: ["exec", "mgmt"] }));
+  assert.equal(c.order[0], "exec");
+  assert.equal(c.order[1], "mgmt");
+  assert.equal(c.order.length, RC_ORDER.length);
+});
+test("report config: locked sections cannot be disabled", () => {
+  const c = rcParse(JSON.stringify({ disabled: ["overview", "cvss"] }));
+  assert.ok(!c.disabled.includes("overview"));
+  assert.ok(c.disabled.includes("cvss"));
+  assert.ok(rcEnabled(c).includes("overview"));
+  assert.ok(!rcEnabled(c).includes("cvss"));
+});

@@ -186,6 +186,7 @@ model Assessment {
   findings         Finding[]
   activities       ActivityLog[]
   reports          Report[]
+  reportConfig     ReportConfig?
 
   @@index([organizationId, status])
   @@index([organizationId, archivedAt])
@@ -269,6 +270,21 @@ model Finding {
   @@index([organizationId, dueDate])
   @@index([cvssScore])
   @@index([assetId])
+}
+
+// Sprint 7 — per-assessment report builder configuration (section order/enable,
+// custom recommendations, appendix). One row per assessment.
+model ReportConfig {
+  id             String     @id @default(cuid())
+  organizationId String
+  assessmentId   String     @unique
+  assessment     Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  config         String     @default("{}") // JSON: { order, disabled, customRecommendations, appendix }
+  updatedById    String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([organizationId])
 }
 
 // Sprint 7 — per-edit field-level change history for findings.
