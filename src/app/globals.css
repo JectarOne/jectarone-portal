@@ -183,6 +183,13 @@ a:hover { text-decoration: underline; }
 .badge.rstate-published { background: rgba(34,197,94,0.16); color: #86efac; }
 .badge.rstate-reopened { background: rgba(245,158,11,0.16); color: #fcd34d; }
 
+/* AI assistant */
+.ai-assist .ai-badge { display: inline-grid; place-items: center; min-width: 26px; height: 18px; padding: 0 6px; border-radius: 5px; background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.04em; margin-right: 0.4rem; }
+.ai-assist .ai-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.ai-result { margin-top: 0.8rem; }
+.ai-output { white-space: pre-wrap; word-break: break-word; background: var(--bg-deep); border: 1px solid var(--line); border-radius: 10px; padding: 0.8rem; font: inherit; font-size: 0.9rem; line-height: 1.55; margin: 0; }
+.ai-disclaimer { font-size: 0.76rem; margin-top: 0.4rem; }
+
 /* Report builder */
 .report-sections { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
 .report-section-row { display: flex; align-items: center; gap: 0.7rem; border: 1px solid var(--line); border-radius: 10px; padding: 0.5rem 0.7rem; background: var(--bg-deep); }

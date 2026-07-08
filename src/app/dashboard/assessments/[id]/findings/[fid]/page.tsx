@@ -10,6 +10,7 @@ import { renderMarkdown } from "@/lib/markdown";
 import { storageConfigured, presignDownload } from "@/lib/storage";
 import { SeverityBadge, FindingStatusBadge, RiskMatrix } from "@/components/findings-ui";
 import { EvidenceGallery, type EvidenceItem } from "@/components/evidence-gallery";
+import { AiAssist } from "@/components/ai-assist";
 import {
   updateFindingAction, setFindingArchivedAction, deleteFindingAction,
   changeStatusAction, assignFindingAction, setDueDateAction, acceptRiskAction, changeReviewStateAction,
@@ -302,6 +303,17 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
           </ul>
         )}
       </div>
+
+      {/* AI assistant (MEMBER+) */}
+      {canWrite && (
+        <>
+          <div className="section-head"><h2>AI assistance</h2></div>
+          <AiAssist
+            findingId={f.id}
+            capabilities={["improve_wording", "generate_remediation", "explain_cvss", "explain_cwe", "suggest_owasp", "suggest_mitre"]}
+          />
+        </>
+      )}
 
       {/* Change history (field-level diffs, MEMBER+) */}
       {canWrite && (

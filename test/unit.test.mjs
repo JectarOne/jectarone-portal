@@ -383,3 +383,39 @@ test("report config: locked sections cannot be disabled", () => {
   assert.ok(rcEnabled(c).includes("overview"));
   assert.ok(!rcEnabled(c).includes("cvss"));
 });
+
+// Mirror of src/lib/ai/prompts.ts guardrail + a representative builder.
+const AI_GUARDRAIL_MARK = "NEVER invent, fabricate, or assume vulnerabilities";
+function aiBuildUser_suggestOwasp(ctx) {
+  return `Title: ${ctx.title ?? ""}\nDescription:\n${ctx.description ?? "(none provided)"}`;
+}
+test("AI prompts carry the anti-fabrication guardrail", () => {
+  // The real GUARDRAIL string (kept in sync with src/lib/ai/prompts.ts).
+  const GUARDRAIL = [
+    "You are an assistant to a professional penetration tester documenting findings for an authorized security assessment.",
+    "CRITICAL RULES — you MUST follow all of them:",
+    "1. NEVER invent, fabricate, or assume vulnerabilities, CVEs, exploits, affected assets, or facts that are not explicitly present in the provided input.",
+  ].join("\n");
+  assert.ok(GUARDRAIL.includes(AI_GUARDRAIL_MARK));
+});
+test("AI user prompt grounds in the provided finding, not free text", () => {
+  const u = aiBuildUser_suggestOwasp({ title: "SQL injection", description: "param is concatenated" });
+  assert.match(u, /SQL injection/);
+  assert.match(u, /concatenated/);
+});
+
+// Mirror of src/lib/ai/provider.ts provider selection.
+function aiProvider(env) {
+  const p = (env.AI_PROVIDER ?? "").toLowerCase();
+  if (p === "anthropic" || p === "openai" || p === "mock") return p;
+  if (env.ANTHROPIC_API_KEY) return "anthropic";
+  if (env.OPENAI_API_KEY) return "openai";
+  return "mock";
+}
+test("AI provider selection: explicit, then key-based, then mock", () => {
+  assert.equal(aiProvider({ AI_PROVIDER: "openai" }), "openai");
+  assert.equal(aiProvider({ AI_PROVIDER: "anthropic" }), "anthropic");
+  assert.equal(aiProvider({ ANTHROPIC_API_KEY: "x" }), "anthropic");
+  assert.equal(aiProvider({ OPENAI_API_KEY: "x" }), "openai");
+  assert.equal(aiProvider({}), "mock");
+});

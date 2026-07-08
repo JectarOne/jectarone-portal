@@ -7,6 +7,7 @@ import { statusLabel, statusClass, typeLabel } from "@/lib/assessments";
 import { SEVERITIES, FINDING_STATUSES, severityWeight, label } from "@/lib/findings";
 import { SeverityBadge, FindingStatusBadge, RiskBadge } from "@/components/findings-ui";
 import { Timeline, type TimelineItem } from "@/components/timeline";
+import { AiAssist } from "@/components/ai-assist";
 import { setArchivedAction, deleteAssessmentAction } from "@/actions/assessments";
 
 function fmt(d: Date | null): string {
@@ -185,6 +186,14 @@ export default async function AssessmentOverviewPage({
           </ul>
         )}
       </div>
+
+      {/* AI assistance (MEMBER+) */}
+      {hasRole(session.role, "MEMBER") && (
+        <>
+          <div className="section-head"><h2>AI assistance</h2></div>
+          <AiAssist assessmentId={a.id} capabilities={["exec_summary", "summarize_report"]} />
+        </>
+      )}
 
       {/* Activity timeline */}
       <div className="section-head"><h2>Timeline</h2></div>

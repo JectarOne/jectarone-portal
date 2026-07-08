@@ -39,6 +39,8 @@ export default defineConfig({
     env: {
       DATABASE_URL: DB_URL,
       AUTH_SECRET,
+      // Deterministic offline AI provider so the assistant is exercised without keys.
+      AI_PROVIDER: "mock",
       // S3/MinIO so the real presigned-upload path is exercised. If MinIO is not
       // running the upload spec skips (the app falls back to metadata-only mode).
       S3_BUCKET: S3.bucket,
