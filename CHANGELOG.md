@@ -1,5 +1,29 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 16 — AI Security Assistant (2026-07-08, branch `sprint-16-ai-assistant`)
+
+Consultant-facing AI assistance, provider-agnostic and grounded.
+
+- **Providers:** `AI_PROVIDER` selects Anthropic (`@anthropic-ai/sdk`,
+  `claude-opus-4-8`, refusal-handled), OpenAI (`openai` SDK), or a deterministic
+  **mock** (offline — powers dev/CI/tests without keys). Auto-detects from
+  whichever key is set; SDKs are lazy-imported so only the selected one loads.
+- **8 capabilities:** improve wording, generate executive summary, explain
+  CVSS, explain CWE, suggest OWASP mapping, suggest MITRE mapping, generate
+  remediation, summarize report — each behind a strict **anti-fabrication
+  guardrail** ("NEVER invent vulnerabilities, CVEs, or facts not in the input").
+- **Security:** `aiAssistAction` is MEMBER+ and loads grounding data
+  server-side from the caller's own org — the client sends only a capability +
+  a record id, never prompt text — so prompts can't be injected and
+  cross-tenant data can't be reached. AI runs server-side only (no CSP change).
+  Activity-logged as `ai.assist`.
+- **UI:** `AiAssist` panel on the finding detail (6 finding capabilities) and
+  assessment detail (exec summary + report summary), MEMBER+ only, with a
+  "review before use" disclaimer. New `.env.example` block documents the vars.
+
+Tests: unit (guardrail present, grounded prompts, provider selection) + E2E
+(finding suggestion, exec summary, client blocked) via the mock provider.
+
 ## Sprint 15 — Professional Pentest Workflow (2026-07-08, branch `sprint-15-pentest-workflow`)
 
 A full consultant workflow layered onto the existing findings/report engine.
