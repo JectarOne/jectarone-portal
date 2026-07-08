@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hasRole } from "@/lib/rbac";
+import { reopenExpiredRiskAcceptances } from "@/lib/risk-sweep";
 import { SEVERITIES, FINDING_STATUSES, CLOSED_STATUSES, severityWeight, label } from "@/lib/findings";
 import { isOverdue } from "@/lib/sla";
 import { SeverityBadge, FindingStatusBadge, CvssBadge, EmptyState } from "@/components/findings-ui";
@@ -19,6 +20,12 @@ export default async function FindingsPage({
   if (!session) return null;
   const sp = await searchParams;
   const q = (sp.q ?? "").trim();
+
+  // Lazily reopen findings whose risk acceptance has expired (MEMBER+ only —
+  // clients never trigger writes). The risk register is the natural sweep point.
+  if (hasRole(session.role, "MEMBER")) {
+    await reopenExpiredRiskAcceptances(session.orgId, session.userId);
+  }
 
   const where: Record<string, unknown> = { organizationId: session.orgId, archivedAt: null };
   // CLIENT (read-only) only sees published findings — internal review states are hidden.

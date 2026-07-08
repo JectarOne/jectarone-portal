@@ -335,3 +335,16 @@ test("diffFinding normalizes numbers to strings for comparison", () => {
   const d = diffFinding({ cvssScore: 9 }, { cvssScore: "9" });
   assert.equal(d.length, 0);
 });
+
+// Mirror of src/lib/risk-acceptance.ts.
+function isAcceptanceExpired(status, until, now = new Date()) {
+  if (status !== "AcceptedRisk" || !until) return false;
+  return until.getTime() < now.getTime();
+}
+test("isAcceptanceExpired only for AcceptedRisk with a past expiry", () => {
+  const now = new Date("2026-07-07");
+  assert.equal(isAcceptanceExpired("AcceptedRisk", new Date("2026-07-01"), now), true);
+  assert.equal(isAcceptanceExpired("AcceptedRisk", new Date("2026-08-01"), now), false);
+  assert.equal(isAcceptanceExpired("AcceptedRisk", null, now), false);
+  assert.equal(isAcceptanceExpired("Open", new Date("2020-01-01"), now), false);
+});

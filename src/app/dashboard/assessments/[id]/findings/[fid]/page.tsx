@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { hasRole } from "@/lib/rbac";
 import { label, FINDING_STATUSES, isClosed, REVIEW_TRANSITIONS, reviewStateClass } from "@/lib/findings";
 import { isOverdue, daysUntilDue } from "@/lib/sla";
+import { isAcceptanceExpired, daysUntilExpiry } from "@/lib/risk-acceptance";
 import { renderMarkdown } from "@/lib/markdown";
 import { storageConfigured, presignDownload } from "@/lib/storage";
 import { SeverityBadge, FindingStatusBadge, RiskMatrix } from "@/components/findings-ui";
@@ -87,6 +88,8 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
   }
   const overdue = isOverdue(f.dueDate, f.status);
   const dLeft = daysUntilDue(f.dueDate);
+  const acceptanceExpired = isAcceptanceExpired(f.status, f.acceptedRiskUntil);
+  const acceptanceDays = f.status === "AcceptedRisk" ? daysUntilExpiry(f.acceptedRiskUntil) : null;
 
   const boundUpdate = updateFindingAction.bind(null, f.id);
   const boundAddEvidence = addEvidenceAction.bind(null, f.id);
@@ -212,7 +215,11 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
             <dl className="kv">
               <dt>Accepted by</dt><dd>{f.acceptedRiskBy?.name ?? "—"}</dd>
               <dt>When</dt><dd>{dt(f.acceptedRiskAt)}</dd>
-              <dt>Expires</dt><dd>{dateInput(f.acceptedRiskUntil) || "No expiry"}</dd>
+              <dt>Expires</dt><dd>
+                {dateInput(f.acceptedRiskUntil) || "No expiry"}
+                {acceptanceDays !== null && acceptanceDays >= 0 && <span className="muted"> · {acceptanceDays} day{acceptanceDays === 1 ? "" : "s"} left</span>}
+                {acceptanceExpired && <span className="badge risk-critical" style={{ marginLeft: "0.5rem" }}>Expired</span>}
+              </dd>
               <dt>Justification</dt><dd>{f.acceptedRiskReason ?? "—"}</dd>
             </dl>
             {canWrite && (

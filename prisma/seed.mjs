@@ -244,6 +244,20 @@ async function main() {
   });
   findings.push(overdue);
 
+  // A finding whose risk acceptance has EXPIRED — the findings list sweep
+  // auto-reopens it for MEMBER+ viewers.
+  const expiredAccept = await prisma.finding.create({
+    data: {
+      organizationId: northwind.id, assessmentId: aWeb.id, title: "Legacy cipher accepted (expired acceptance)",
+      severity: "Medium", likelihood: "Medium", impact: "Medium", status: "AcceptedRisk", reviewState: "Approved",
+      cvssScore: 5.0, cwe: "CWE-327", createdById: consultant.id,
+      acceptedRiskReason: "Compensating controls in place until Q1 upgrade.",
+      acceptedRiskById: admin.id, acceptedRiskAt: daysAgo(120), acceptedRiskUntil: daysAgo(5),
+      createdAt: daysAgo(130),
+    },
+  });
+  findings.push(expiredAccept);
+
   // ---- Evidence (metadata; storageKey null → app renders metadata-only) ----
   await prisma.evidence.create({
     data: { organizationId: northwind.id, findingId: findings[0].id, filename: "sqli-poc.png", mimeType: "image/png", sizeBytes: 82000, note: "Proof-of-concept screenshot.", uploadedById: consultant.id },
