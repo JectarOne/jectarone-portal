@@ -163,10 +163,13 @@ const LIKES = ["VeryLow", "Low", "Medium", "High", "VeryHigh"]; // left→right
 
 export function ReportDocument({
   assessment, findings, assets, score, reportTitle, generatedBy, generatedAt,
+  disabled = [], customRecommendations = null, appendix = null,
 }: {
   assessment: ReportAssessment; findings: ReportFindingRow[]; assets: ReportAsset[];
   score: Score; reportTitle: string; generatedBy: string; generatedAt: string;
+  disabled?: string[]; customRecommendations?: string | null; appendix?: string | null;
 }) {
+  const show = (k: string) => !disabled.includes(k);
   const sevCounts = severityCounts(findings);
   const sevMax = Math.max(1, ...SEVERITY_ORDER.map((s2) => sevCounts[s2]));
   const cvss = cvssBandCounts(findings);
@@ -238,17 +241,17 @@ export function ReportDocument({
           <Text key={f.id} style={s.p}>{i + 1}. {f.title} — {findingLabel(f.severity)}{f.cvssScore != null ? ` (CVSS ${f.cvssScore})` : ""}</Text>
         ))}
 
-        <SectionTitle id="exec">Executive Summary</SectionTitle>
-        <Text style={s.p}>{assessment.executiveSummary || "No executive summary was provided for this assessment."}</Text>
+        {show("exec") && <><SectionTitle id="exec">Executive Summary</SectionTitle>
+        <Text style={s.p}>{assessment.executiveSummary || "No executive summary was provided for this assessment."}</Text></>}
 
-        <SectionTitle id="scope">Assessment Scope</SectionTitle>
+        {show("scope") && <><SectionTitle id="scope">Assessment Scope</SectionTitle>
         <View style={s.kv}>
           <Text style={s.kvItem}>Type: {typeLabel(assessment.type)}</Text>
           <Text style={s.kvItem}>Status: {findingLabel(assessment.status)}</Text>
           <Text style={s.kvItem}>Period: {fmt(assessment.startDate)} → {fmt(assessment.endDate)}</Text>
           <Text style={s.kvItem}>Lead: {assessment.leadConsultant ?? "—"}</Text>
         </View>
-        <Text style={s.p}>{assessment.scope || "No scope statement was recorded."}</Text>
+        <Text style={s.p}>{assessment.scope || "No scope statement was recorded."}</Text></>}
       </Page>
 
       {/* Risk score + matrix + CVSS */}
@@ -298,22 +301,22 @@ export function ReportDocument({
       {/* Framework mappings */}
       <Page size="A4" style={s.page}>
         <Chrome reportTitle={reportTitle} />
-        <SectionTitle id="owasp">OWASP Top 10 Mapping</SectionTitle>
-        <Table head={["OWASP category", "Findings"]} widths={["78%", "22%"]} rows={owasp.map(([k, v]) => [k, v])} />
+        {show("owasp") && <><SectionTitle id="owasp">OWASP Top 10 Mapping</SectionTitle>
+        <Table head={["OWASP category", "Findings"]} widths={["78%", "22%"]} rows={owasp.map(([k, v]) => [k, v])} /></>}
 
-        <SectionTitle id="mitre">MITRE ATT&CK Mapping</SectionTitle>
-        <Table head={["Technique", "Findings"]} widths={["78%", "22%"]} rows={mitre.map(([k, v]) => [k, v])} />
+        {show("mitre") && <><SectionTitle id="mitre">MITRE ATT&CK Mapping</SectionTitle>
+        <Table head={["Technique", "Findings"]} widths={["78%", "22%"]} rows={mitre.map(([k, v]) => [k, v])} /></>}
 
-        <SectionTitle id="cwe">CWE Summary</SectionTitle>
-        <Table head={["CWE", "Findings"]} widths={["78%", "22%"]} rows={cwe.map(([k, v]) => [k, v])} />
+        {show("cwe") && <><SectionTitle id="cwe">CWE Summary</SectionTitle>
+        <Table head={["CWE", "Findings"]} widths={["78%", "22%"]} rows={cwe.map(([k, v]) => [k, v])} /></>}
       </Page>
 
       {/* Assets + findings overview */}
       <Page size="A4" style={s.page}>
         <Chrome reportTitle={reportTitle} />
-        <SectionTitle id="assets">Assets Summary</SectionTitle>
+        {show("assets") && <><SectionTitle id="assets">Assets Summary</SectionTitle>
         <Table head={["Asset", "Type", "Identifier", "Findings"]} widths={["34%", "22%", "30%", "14%"]}
-          rows={assets.map((a) => [a.name, findingLabel(a.type), a.identifier ?? "—", a.findingCount])} />
+          rows={assets.map((a) => [a.name, findingLabel(a.type), a.identifier ?? "—", a.findingCount])} /></>}
 
         <SectionTitle id="overview">Findings Overview</SectionTitle>
         <View style={s.table}>
@@ -370,13 +373,14 @@ export function ReportDocument({
       {/* Evidence + recommendations */}
       <Page size="A4" style={s.page}>
         <Chrome reportTitle={reportTitle} />
-        <SectionTitle id="evidence">Evidence</SectionTitle>
+        {show("evidence") && <><SectionTitle id="evidence">Evidence</SectionTitle>
         <Text style={s.p}>{totalEvidence} evidence file{totalEvidence === 1 ? "" : "s"} collected across {findings.filter((f) => f.evidenceCount > 0).length} finding(s).</Text>
         <Table head={["Finding", "Evidence files"]} widths={["78%", "22%"]}
-          rows={findings.filter((f) => f.evidenceCount > 0).map((f) => [f.title, f.evidenceCount])} />
+          rows={findings.filter((f) => f.evidenceCount > 0).map((f) => [f.title, f.evidenceCount])} /></>}
 
-        <SectionTitle id="recs">Recommendations</SectionTitle>
-        {recs.length === 0 ? <Text style={s.p}>No recommendations recorded.</Text> : recs.map((rec, i) => (
+        {show("recs") && <><SectionTitle id="recs">Recommendations</SectionTitle>
+        {customRecommendations && <Text style={s.p}>{customRecommendations}</Text>}
+        {recs.length === 0 && !customRecommendations ? <Text style={s.p}>No recommendations recorded.</Text> : recs.map((rec, i) => (
           <View key={i} style={{ marginBottom: 6 }} wrap={false}>
             <View style={s.findingTitleRow}>
               <Text style={[s.h2, { maxWidth: "72%" }]}>{i + 1}. {rec.title}</Text>
@@ -384,7 +388,10 @@ export function ReportDocument({
             </View>
             <Text style={s.p}>{rec.remediation}</Text>
           </View>
-        ))}
+        ))}</>}
+
+        {appendix && <><SectionTitle id="appendix">Appendix</SectionTitle>
+        <Text style={s.p}>{appendix}</Text></>}
       </Page>
     </Document>
   );
