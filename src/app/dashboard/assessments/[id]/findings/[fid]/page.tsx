@@ -47,12 +47,23 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
   // CLIENT (read-only) may only view published findings — internal review states are hidden.
   if (!hasRole(session.role, "MEMBER") && f.reviewState !== "Published") notFound();
 
-  const [assets, members, comments, timeline] = await Promise.all([
+  const [assets, members, comments, timeline, revisions] = await Promise.all([
     prisma.asset.findMany({ where: { organizationId: session.orgId, archivedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.membership.findMany({ where: { organizationId: session.orgId }, include: { user: { select: { id: true, name: true } } } }),
     prisma.findingComment.findMany({ where: { findingId: fid, deletedAt: null }, orderBy: { createdAt: "asc" }, include: { author: { select: { name: true } } } }),
     prisma.activityLog.findMany({ where: { organizationId: session.orgId, findingId: fid }, orderBy: { createdAt: "asc" }, include: { user: { select: { name: true } } } }),
+    // Field-level edit history (MEMBER+ only — clients don't see internal churn).
+    hasRole(session.role, "MEMBER")
+      ? prisma.findingRevision.findMany({ where: { findingId: fid }, orderBy: { createdAt: "desc" }, take: 50, include: { user: { select: { name: true } } } })
+      : Promise.resolve([]),
   ]);
+
+  type ParsedRevision = { id: string; when: Date; who: string; changes: { label: string; from: string | null; to: string | null }[] };
+  const history: ParsedRevision[] = revisions.map((r) => {
+    let changes: ParsedRevision["changes"] = [];
+    try { changes = JSON.parse(r.changes); } catch { changes = []; }
+    return { id: r.id, when: r.createdAt, who: r.user?.name ?? "—", changes };
+  });
 
   const canWrite = hasRole(session.role, "MEMBER");
   const canDelete = hasRole(session.role, "ADMIN");
@@ -278,6 +289,37 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
           </ul>
         )}
       </div>
+
+      {/* Change history (field-level diffs, MEMBER+) */}
+      {canWrite && (
+        <>
+          <div className="section-head"><h2>Change history <span className="count">{history.length}</span></h2></div>
+          <div className="card">
+            {history.length === 0 ? (
+              <div className="empty">No edits recorded yet. Field changes are tracked from now on.</div>
+            ) : (
+              <ul className="activity">
+                {history.map((rev) => (
+                  <li key={rev.id} style={{ display: "block" }}>
+                    <span className="act-meta" style={{ marginLeft: 0, display: "block", marginBottom: "0.3rem" }}>
+                      {rev.who} · {dt(rev.when)}
+                    </span>
+                    <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "0.2rem" }}>
+                      {rev.changes.map((c, i) => (
+                        <li key={i} style={{ fontSize: "0.85rem" }}>
+                          <strong>{c.label}:</strong>{" "}
+                          <span className="muted" style={{ textDecoration: "line-through" }}>{c.from ?? "—"}</span>{" → "}
+                          <span>{c.to ?? "—"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Edit */}
       {canWrite && (

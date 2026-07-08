@@ -10,6 +10,7 @@ import { findingSchema, statusChangeSchema, assignSchema, acceptRiskSchema, dueD
 import { logActivity } from "@/lib/activity";
 import { computeDueDate } from "@/lib/sla";
 import { STATUS_TRANSITIONS, REVIEW_TRANSITIONS, label } from "@/lib/findings";
+import { diffFinding } from "@/lib/finding-diff";
 
 export type FindingState = { error?: string; fieldErrors?: Record<string, string> };
 
@@ -136,10 +137,18 @@ export async function updateFindingAction(id: string, _prev: FindingState, formD
     ? computeDueDate(parsed.data.severity, existing.createdAt)
     : undefined;
 
+  // Field-level change history: diff the tracked editable fields before writing.
+  const changes = diffFinding(existing as unknown as Record<string, unknown>, toData(parsed.data) as unknown as Record<string, unknown>);
+
   await prisma.finding.update({
     where: { id },
     data: { ...toData(parsed.data), assetId, ...(recomputedDue !== undefined ? { dueDate: recomputedDue } : {}) },
   });
+  if (changes.length > 0) {
+    await prisma.findingRevision.create({
+      data: { organizationId: session.orgId, findingId: id, userId: session.userId, changes: JSON.stringify(changes) },
+    });
+  }
   if (severityChanged) {
     await logActivity({
       organizationId: session.orgId, userId: session.userId, action: "finding.severity_changed",

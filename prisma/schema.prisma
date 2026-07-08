@@ -32,6 +32,7 @@ model User {
   assignedFindings Finding[]        @relation("FindingAssignee")
   acceptedFindings Finding[]        @relation("FindingAcceptedBy")
   comments         FindingComment[] @relation("CommentAuthor")
+  revisions        FindingRevision[] @relation("RevisionUser")
 }
 
 model Organization {
@@ -258,6 +259,7 @@ model Finding {
   evidence         Evidence[]
   activities       ActivityLog[]
   comments         FindingComment[]
+  revisions        FindingRevision[]
 
   @@index([organizationId, assessmentId])
   @@index([organizationId, severity])
@@ -267,6 +269,21 @@ model Finding {
   @@index([organizationId, dueDate])
   @@index([cvssScore])
   @@index([assetId])
+}
+
+// Sprint 7 — per-edit field-level change history for findings.
+// `changes` is a JSON array of { field, from, to } captured on each edit.
+model FindingRevision {
+  id             String   @id @default(cuid())
+  organizationId String
+  findingId      String
+  finding        Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?    @relation("RevisionUser", fields: [userId], references: [id], onDelete: SetNull)
+  changes        String   // JSON: [{ field, from, to }]
+  createdAt      DateTime @default(now())
+
+  @@index([findingId, createdAt])
 }
 
 // Sprint 3 — Evidence (metadata; binary storage is a future integration that

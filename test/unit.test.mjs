@@ -301,3 +301,37 @@ test("report: recommendations prioritized by severity then cvss", () => {
   ];
   assert.deepEqual(prioritized(f).map((x) => x.title), ["crit", "high", "low"]);
 });
+
+// Mirror of src/lib/finding-diff.ts normalization + diff (no TS build needed).
+const norm = (v) => {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim();
+  return s === "" ? null : s;
+};
+const TRACKED = [["title","Title"],["severity","Severity"],["cvssScore","CVSS score"],["remediation","Remediation"]];
+function diffFinding(before, after) {
+  const out = [];
+  for (const [key, label] of TRACKED) {
+    const from = norm(before[key]); const to = norm(after[key]);
+    if (from !== to) out.push({ field: key, label, from, to });
+  }
+  return out;
+}
+
+test("diffFinding reports only changed fields", () => {
+  const before = { title: "A", severity: "High", cvssScore: 7.5, remediation: "" };
+  const after = { title: "B", severity: "High", cvssScore: 9.0, remediation: null };
+  const d = diffFinding(before, after);
+  assert.equal(d.length, 2);
+  assert.deepEqual(d.map((c) => c.field).sort(), ["cvssScore", "title"]);
+});
+
+test("diffFinding treats empty string and null as equal (no change)", () => {
+  const d = diffFinding({ remediation: "" }, { remediation: null });
+  assert.equal(d.length, 0);
+});
+
+test("diffFinding normalizes numbers to strings for comparison", () => {
+  const d = diffFinding({ cvssScore: 9 }, { cvssScore: "9" });
+  assert.equal(d.length, 0);
+});
