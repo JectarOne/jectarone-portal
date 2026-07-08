@@ -1,5 +1,60 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 15 — Professional Pentest Workflow (2026-07-08, branch `sprint-15-pentest-workflow`)
+
+A full consultant workflow layered onto the existing findings/report engine.
+Nine additive migrations (0005–0009 + column adds); no existing data touched.
+
+### 1. Finding templates (`0005`)
+Reusable finding library (`FindingTemplate`), org-private or built-in
+(`organizationId` null). CRUD (MEMBER+ edit, ADMIN+ delete; built-ins
+read-only), search + category filter at `/dashboard/templates`. "Start from a
+template" prefills New Finding (`?template=<id>`, org-visibility checked). 8
+seeded built-ins (XSS, SQLi, IDOR, headers, weak creds, SSRF, Kerberoasting,
+data-in-transit) with CVSS/CWE/OWASP/MITRE + remediation.
+
+### 2. Review/publication lifecycle (`0006`)
+`Finding.reviewState` (Draft → InReview → Approved → Published → Reopened),
+separate from remediation `status`. Transition-enforced action, activity-logged,
+state pill + control on the finding page. **CLIENT sees only Published findings**
+— gated on the findings list, assessment findings list, and detail (notFound).
+
+### 3. Field-level change history (`0007`)
+`FindingRevision` records a JSON diff per edit. Pure `diffFinding()` helper
+(tracked fields, null/empty + numeric normalization). "Change history" section
+(MEMBER+) shows field · from → to · who · when.
+
+### 4. Risk-acceptance expiry
+`isAcceptanceExpired` / `daysUntilExpiry` helpers; `reopenExpiredRiskAcceptances`
+sweep (plain lib, not an RPC — no cross-tenant abuse) auto-reopens lapsed
+acceptances when the risk register is viewed (MEMBER+). Detail page shows
+"N days left" / "Expired".
+
+### 5. Comment visibility + mentions (`0008`)
+`FindingComment.visibility` ("internal" | "client", default internal). Author
+picks visibility; CLIENT sees only client-visible comments. Visibility badge for
+the team; @mentions render as highlighted spans. Attachments served by the
+existing per-finding Evidence gallery + Markdown links (no duplicate upload path).
+
+### 6. Report builder (`0009`)
+`ReportConfig` per assessment: reorder sections (keyboard-accessible up/down),
+include/exclude toggles (Overview + Detailed Findings locked on), and editors for
+executive summary, custom recommendations, and appendix. `parseConfig()`
+sanitizes persisted JSON (unit-tested).
+
+### 7. Deliverables — PDF / HTML / DOCX
+`GET …/report?format=pdf|html|docx`. All honor the builder config (disabled
+sections, custom recommendations, appendix). PDF via `@react-pdf/renderer`
+(section skip + custom content); HTML a branded, escaped standalone document in
+configured order; DOCX via the `docx` package. Each writes a Report audit row +
+activity entry. RBAC unchanged (MEMBER+; client 403).
+
+### Tests
+Per-feature Playwright E2E (templates, review lifecycle, change history, risk
+expiry, comment visibility, report builder, deliverables) + unit tests
+(diff normalization, acceptance expiry, report-config parse/order/locked). Full
+unit suite: 37 passing.
+
 ## Sprint 14 — Production Readiness (2026-07-07, branch `sprint-14-production-readiness`)
 
 CI/CD, observability, and ops docs. No customer-facing features / no new UI.

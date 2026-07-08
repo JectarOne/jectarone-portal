@@ -208,6 +208,7 @@ Functional · validated (zod) · authorized (RBAC) · responsive · accessible �
 - **Sprint 4 (done):** Assets (formal inventory, optionally linked to findings), Reports (audit log), live PDF export via `@react-pdf/renderer`.
 - **Sprint 5 (done):** Vulnerability management workflow — status lifecycle + history, assignment, SLA/overdue, risk acceptance, comments (Markdown/soft-delete), timeline, dashboard analytics (MTTR/distributions), CLIENT read-only role, REST API.
 - **Sprint 6 (done):** Evidence file storage — direct-to-S3 presigned upload/download/preview (S3 or S3-compatible), graceful metadata-only fallback when unconfigured. Closes the Sprint 5 deferral.
+- **Sprint 7 (done):** Professional pentest workflow — finding templates (`FindingTemplate`, org-private/built-in), review/publication lifecycle (`Finding.reviewState`; CLIENT sees only Published), field-level change history (`FindingRevision`), risk-acceptance expiry auto-reopen, comment visibility (`FindingComment.visibility` internal/client), report builder (`ReportConfig`: section order/enable + exec summary/recommendations/appendix), and multi-format deliverables (PDF/HTML/DOCX) that honor the config. Migrations 0005–0009.
 - Later: notifications, audit logs, billing, API keys, developer docs.
 
 ## RBAC on assessments
