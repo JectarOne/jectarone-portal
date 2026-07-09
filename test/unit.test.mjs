@@ -440,3 +440,27 @@ test("engagement lifecycle rejects illegal jumps", () => {
   assert.equal(engCanTransition("Active", "Retest"), false);
   assert.equal(engCanTransition("Closed", "Reporting"), false);
 });
+
+// Mirror of src/lib/retest.ts transitions.
+const RT_TRANSITIONS = {
+  Requested: ["Scheduled", "InProgress"],
+  Scheduled: ["InProgress", "Requested"],
+  InProgress: ["Verified", "Failed", "Scheduled"],
+  Verified: [],
+  Failed: [],
+};
+const rtCanTransition = (from, to) => (RT_TRANSITIONS[from] ?? []).includes(to);
+const rtIsOpen = (s) => !["Verified", "Failed"].includes(s);
+test("retest lifecycle: request → schedule/progress → verify/fail", () => {
+  assert.equal(rtCanTransition("Requested", "InProgress"), true);
+  assert.equal(rtCanTransition("InProgress", "Verified"), true);
+  assert.equal(rtCanTransition("InProgress", "Failed"), true);
+  assert.equal(rtCanTransition("Requested", "Verified"), false); // must go through InProgress
+  assert.equal(rtCanTransition("Verified", "InProgress"), false); // terminal
+});
+test("retest open/terminal classification", () => {
+  assert.equal(rtIsOpen("Requested"), true);
+  assert.equal(rtIsOpen("Scheduled"), true);
+  assert.equal(rtIsOpen("Verified"), false);
+  assert.equal(rtIsOpen("Failed"), false);
+});

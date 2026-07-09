@@ -33,6 +33,8 @@ model User {
   acceptedFindings Finding[]        @relation("FindingAcceptedBy")
   comments         FindingComment[] @relation("CommentAuthor")
   revisions        FindingRevision[] @relation("RevisionUser")
+  retestsRequested Retest[]         @relation("RetestRequestedBy")
+  retestsAssigned  Retest[]         @relation("RetestAssignedTo")
 }
 
 model Organization {
@@ -51,6 +53,7 @@ model Organization {
   apiTokens   ApiToken[]
   findingTemplates FindingTemplate[]
   engagements Engagement[]
+  retests     Retest[]
 }
 
 // Reusable finding library — consultants create findings from templates with
@@ -290,6 +293,7 @@ model Finding {
   activities       ActivityLog[]
   comments         FindingComment[]
   revisions        FindingRevision[]
+  retests          Retest[]
 
   @@index([organizationId, assessmentId])
   @@index([organizationId, severity])
@@ -331,6 +335,37 @@ model FindingRevision {
   @@index([findingId, createdAt])
 }
 
+// Sprint 8 — Retest: the remediation-verification lifecycle for a finding.
+// Requested → Scheduled → InProgress → Verified | Failed. A failed retest
+// reopens the finding; a verified retest marks it resolved.
+model Retest {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  findingId      String
+  finding        Finding      @relation(fields: [findingId], references: [id], onDelete: Cascade)
+
+  status         String       @default("Requested")
+  requestedById  String?
+  requestedBy    User?        @relation("RetestRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+  assignedToId   String?
+  assignedTo     User?        @relation("RetestAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  dueDate        DateTime?
+  scheduledFor   DateTime?
+  completedAt    DateTime?
+  result         String?      // outcome summary recorded at Verified/Failed
+  consultantNotes String?
+  clientNotes    String?
+
+  evidence       Evidence[]   // new evidence captured during this retest
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, status])
+  @@index([findingId, createdAt])
+}
+
 // Sprint 3 — Evidence (metadata; binary storage is a future integration that
 // needs no schema change — add a storageKey/url later without migration churn).
 model Evidence {
@@ -348,11 +383,16 @@ model Evidence {
 
   uploadedById   String?
   uploadedBy     User?        @relation("EvidenceUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  // Sprint 8 — optional link to the retest this evidence was captured during
+  // ("new" evidence). Null = original finding evidence ("old").
+  retestId       String?
+  retest         Retest?      @relation(fields: [retestId], references: [id], onDelete: SetNull)
   createdAt      DateTime     @default(now())
   deletedAt      DateTime?    // Sprint 5 — soft delete
 
   @@index([organizationId])
   @@index([findingId])
+  @@index([retestId])
 }
 
 // Sprint 5 — collaboration comments on a finding (soft-delete, editable, Markdown body).

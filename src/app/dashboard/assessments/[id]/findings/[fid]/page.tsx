@@ -11,6 +11,9 @@ import { storageConfigured, presignDownload } from "@/lib/storage";
 import { SeverityBadge, FindingStatusBadge, RiskMatrix } from "@/components/findings-ui";
 import { EvidenceGallery, type EvidenceItem } from "@/components/evidence-gallery";
 import { AiAssist } from "@/components/ai-assist";
+import { RequestRetestForm } from "./RequestRetestForm";
+import { requestRetestAction, advanceRetestAction, completeRetestAction, saveRetestNotesAction } from "@/actions/retest";
+import { retestStatusLabel, retestStatusClass, RETEST_TRANSITIONS } from "@/lib/retest";
 import {
   updateFindingAction, setFindingArchivedAction, deleteFindingAction,
   changeStatusAction, assignFindingAction, setDueDateAction, acceptRiskAction, changeReviewStateAction,
@@ -63,6 +66,15 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
       ? prisma.findingRevision.findMany({ where: { findingId: fid }, orderBy: { createdAt: "desc" }, take: 50, include: { user: { select: { name: true } } } })
       : Promise.resolve([]),
   ]);
+
+  // Retests for this finding (MEMBER+ only).
+  const retests = hasRole(session.role, "MEMBER")
+    ? await prisma.retest.findMany({
+        where: { findingId: fid }, orderBy: { createdAt: "desc" },
+        include: { requestedBy: { select: { name: true } }, assignedTo: { select: { name: true } } },
+      })
+    : [];
+  const currentRetest = retests.find((r) => r.status !== "Verified" && r.status !== "Failed") ?? null;
 
   type ParsedRevision = { id: string; when: Date; who: string; changes: { label: string; from: string | null; to: string | null }[] };
   const history: ParsedRevision[] = revisions.map((r) => {
@@ -303,6 +315,83 @@ export default async function FindingDetailPage({ params }: { params: Promise<{ 
           </ul>
         )}
       </div>
+
+      {/* Retest workflow (MEMBER+) */}
+      {canWrite && (
+        <>
+          <div className="section-head"><h2>Retest <span className="count">{retests.length}</span></h2></div>
+          <div className="card">
+            {currentRetest ? (
+              <>
+                <div className="kv" style={{ marginBottom: "0.8rem" }}>
+                  <dt>Status</dt><dd><span className={`badge ${retestStatusClass(currentRetest.status)}`}>{retestStatusLabel(currentRetest.status)}</span></dd>
+                  <dt>Requested by</dt><dd>{currentRetest.requestedBy?.name ?? "—"}</dd>
+                  <dt>Assigned to</dt><dd>{currentRetest.assignedTo?.name ?? "Unassigned"}</dd>
+                  <dt>Due</dt><dd>{currentRetest.dueDate ? dateInput(currentRetest.dueDate) : "—"}</dd>
+                  {currentRetest.scheduledFor && <><dt>Scheduled</dt><dd>{dateInput(currentRetest.scheduledFor)}</dd></>}
+                </div>
+
+                {(RETEST_TRANSITIONS[currentRetest.status]?.length ?? 0) > 0 && (
+                  <form action={advanceRetestAction.bind(null, currentRetest.id)} className="inline-form" style={{ marginBottom: "0.6rem" }}>
+                    <select name="retestStatus" defaultValue={RETEST_TRANSITIONS[currentRetest.status].find((s) => s !== "Verified" && s !== "Failed") ?? RETEST_TRANSITIONS[currentRetest.status][0]} aria-label="Next retest status">
+                      {RETEST_TRANSITIONS[currentRetest.status].filter((s) => s !== "Verified" && s !== "Failed").map((s) => <option key={s} value={s}>{retestStatusLabel(s)}</option>)}
+                    </select>
+                    <input name="scheduledFor" type="date" aria-label="Schedule date" />
+                    <button className="btn btn-secondary" type="submit">Advance retest</button>
+                  </form>
+                )}
+
+                {currentRetest.status === "InProgress" && (
+                  <form action={completeRetestAction.bind(null, currentRetest.id)} className="comment-form">
+                    <textarea name="result" rows={2} placeholder="Verification result / notes…" />
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <button className="btn btn-primary" type="submit" name="outcome" value="Verified">Mark verified</button>
+                      <button className="btn btn-danger" type="submit" name="outcome" value="Failed">Mark failed (reopen)</button>
+                    </div>
+                  </form>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="muted" style={{ marginBottom: "0.6rem" }}>No open retest. Request one once the client reports a fix.</p>
+                <RequestRetestForm action={requestRetestAction.bind(null, f.id)} members={members.map((m) => ({ id: m.user.id, name: m.user.name }))} />
+              </>
+            )}
+
+            {retests.length > 0 && (
+              <>
+                <h3 className="sub" style={{ marginTop: "1rem" }}>Retest history</h3>
+                <ul className="activity">
+                  {retests.map((r) => (
+                    <li key={r.id}>
+                      <span className={`badge ${retestStatusClass(r.status)}`}>{retestStatusLabel(r.status)}</span>
+                      {r.result && <span className="act-detail"> — {r.result}</span>}
+                      <span className="act-meta">{r.assignedTo?.name ?? "unassigned"} · {dt(r.completedAt ?? r.createdAt)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {/* Old vs new evidence comparison */}
+            {(() => {
+              const oldEv = f.evidence.filter((ev) => !ev.retestId);
+              const newEv = f.evidence.filter((ev) => ev.retestId);
+              if (newEv.length === 0) return null;
+              return (
+                <div className="grid grid-2" style={{ marginTop: "1rem" }}>
+                  <div><h3 className="sub">Original evidence ({oldEv.length})</h3>
+                    <ul className="activity">{oldEv.map((ev) => <li key={ev.id}><span className="act-detail">{ev.filename}</span></li>)}{oldEv.length === 0 && <li className="muted">None</li>}</ul>
+                  </div>
+                  <div><h3 className="sub">Retest evidence ({newEv.length})</h3>
+                    <ul className="activity">{newEv.map((ev) => <li key={ev.id}><span className="act-detail">{ev.filename}</span></li>)}</ul>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </>
+      )}
 
       {/* AI assistant (MEMBER+) */}
       {canWrite && (

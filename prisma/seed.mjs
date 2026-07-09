@@ -38,6 +38,7 @@ async function wipe() {
   await prisma.findingTemplate.deleteMany();
   await prisma.findingComment.deleteMany();
   await prisma.evidence.deleteMany();
+  await prisma.retest.deleteMany();
   await prisma.report.deleteMany();
   await prisma.finding.deleteMany();
   await prisma.asset.deleteMany();
@@ -290,6 +291,28 @@ async function main() {
   });
   await prisma.activityLog.create({
     data: { organizationId: northwind.id, userId: consultant.id, action: "comment.added", assessmentId: aWeb.id, findingId: findings[0].id, createdAt: daysAgo(14) },
+  });
+
+  // ---- Retests (Northwind) ----
+  // Open retest on the broken-access finding (findings[1]).
+  await prisma.retest.create({
+    data: {
+      id: "nw-retest-open", organizationId: northwind.id, findingId: findings[1].id, status: "Scheduled",
+      requestedById: admin.id, assignedToId: consultant.id, dueDate: daysAgo(-7), scheduledFor: daysAgo(-3),
+      consultantNotes: "Awaiting client confirmation the patch is deployed.", createdAt: daysAgo(3),
+    },
+  });
+  // Completed (Verified) retest on the verbose-errors finding (findings[3]).
+  const verifiedRetest = await prisma.retest.create({
+    data: {
+      organizationId: northwind.id, findingId: findings[3].id, status: "Verified",
+      requestedById: admin.id, assignedToId: consultant.id, result: "Confirmed fixed — error messages no longer leak stack traces.",
+      createdAt: daysAgo(9), completedAt: daysAgo(4),
+    },
+  });
+  // Retest evidence ("new") captured during the verified retest.
+  await prisma.evidence.create({
+    data: { organizationId: northwind.id, findingId: findings[3].id, retestId: verifiedRetest.id, filename: "retest-verified.png", mimeType: "image/png", sizeBytes: 40000, note: "Post-fix screenshot.", uploadedById: consultant.id },
   });
 
   // A couple of Globex findings (isolation target)

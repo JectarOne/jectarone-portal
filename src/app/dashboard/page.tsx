@@ -53,6 +53,19 @@ export default async function DashboardHome() {
     }),
   ]);
 
+  // Retest metrics (Sprint 8).
+  const retests = await prisma.retest.findMany({
+    where: { organizationId: org },
+    select: { status: true, createdAt: true, completedAt: true },
+  });
+  const retestWaiting = retests.filter((r) => r.status !== "Verified" && r.status !== "Failed").length;
+  const retestFailed = retests.filter((r) => r.status === "Failed").length;
+  const verifiedRetests = retests.filter((r) => r.status === "Verified" && r.completedAt);
+  const retestVerified = verifiedRetests.length;
+  const avgVerifyDays = verifiedRetests.length
+    ? Math.round(verifiedRetests.reduce((s, r) => s + (r.completedAt!.getTime() - r.createdAt.getTime()), 0) / verifiedRetests.length / 86_400_000)
+    : null;
+
   const open = findings.filter((f) => !isClosed(f.status));
   const overdue = findings.filter((f) => isOverdue(f.dueDate, f.status));
   const critical = open.filter((f) => f.severity === "Critical");
@@ -125,6 +138,16 @@ export default async function DashboardHome() {
         <div className="card metric"><span>Assessments in progress</span><strong>{inProgress}</strong></div>
         <div className="card metric"><span>Overdue</span><strong className="sev-critical-text">{overdue.length}</strong></div>
         <div className="card metric"><span>Resolved (total)</span><strong className="sev-low-text">{findings.filter((f) => f.resolvedAt).length}</strong></div>
+      </div>
+
+      {/* Retest queue */}
+      <div className="section-head"><h2>Retest queue</h2></div>
+      <div className="grid grid-5">
+        <div className="card metric"><span>Retests waiting</span><strong>{retestWaiting}</strong></div>
+        <div className="card metric"><span>Failed retests</span><strong className="sev-critical-text">{retestFailed}</strong></div>
+        <div className="card metric"><span>Verified findings</span><strong className="sev-low-text">{retestVerified}</strong></div>
+        <div className="card metric"><span>Avg. verification</span><strong>{avgVerifyDays !== null ? `${avgVerifyDays}d` : "—"}</strong></div>
+        <div className="card metric"><span>Total retests</span><strong>{retests.length}</strong></div>
       </div>
 
       {/* Charts */}
