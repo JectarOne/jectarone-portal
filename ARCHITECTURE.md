@@ -209,7 +209,9 @@ Functional · validated (zod) · authorized (RBAC) · responsive · accessible �
 - **Sprint 5 (done):** Vulnerability management workflow — status lifecycle + history, assignment, SLA/overdue, risk acceptance, comments (Markdown/soft-delete), timeline, dashboard analytics (MTTR/distributions), CLIENT read-only role, REST API.
 - **Sprint 6 (done):** Evidence file storage — direct-to-S3 presigned upload/download/preview (S3 or S3-compatible), graceful metadata-only fallback when unconfigured. Closes the Sprint 5 deferral.
 - **Sprint 7 (done):** Professional pentest workflow — finding templates (`FindingTemplate`, org-private/built-in), review/publication lifecycle (`Finding.reviewState`; CLIENT sees only Published), field-level change history (`FindingRevision`), risk-acceptance expiry auto-reopen, comment visibility (`FindingComment.visibility` internal/client), report builder (`ReportConfig`: section order/enable + exec summary/recommendations/appendix), and multi-format deliverables (PDF/HTML/DOCX) that honor the config. Migrations 0005–0009.
-- Later: notifications, audit logs, billing, API keys, developer docs.
+- **Sprint 8 (done):** Engagements (`Engagement`, groups assessments) and the retest workflow (`Retest`: Requested→Scheduled→InProgress→Verified/Failed, drives finding resolution/reopen). Migrations 0010–0011.
+- **Sprint 9 (done):** Monetization — `Subscription`/`UsageCounter`/`AiUsageLog`/`Invoice`, code-defined plans with server-enforced limits/features, Stripe billing (webhook-authoritative, mock-mode for dev/CI), trials, AI credits, billing + revenue dashboards. Migration 0012. See `docs/BILLING.md`.
+- Later: notifications, audit logs, API keys marketplace, developer docs.
 
 ## RBAC on assessments
 - View / list: any member.

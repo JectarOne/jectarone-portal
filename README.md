@@ -63,6 +63,12 @@ self-rolled JWT session auth (jose + bcryptjs) · zod validation · plain CSS (b
 - **Graceful fallback**: with no S3 env set, evidence stays metadata-only (nothing breaks).
 - Configure via `S3_BUCKET` / `S3_REGION` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` (+ optional `S3_ENDPOINT`). Bucket CORS example in `.env.example`.
 
+## Sprint 19 (implemented) — Monetization & Billing
+- **Subscriptions, plans, and Stripe billing** — see `docs/BILLING.md` for the full architecture.
+- Plans (Starter/Professional/Business/Enterprise) enforce limits and feature flags **server-side only**; a 14-day full-featured trial starts on every signup.
+- **Real Stripe webhook is the only writer of subscription state**; a built-in mock-checkout flow exercises the same code path offline (dev/CI, no Stripe account needed).
+- Self-service billing dashboard (`/dashboard/settings/billing`), internal revenue dashboard (`/dashboard/admin/revenue`, staff-email-gated), AI usage metering, trial-lifecycle emails.
+
 ## Local development
 ```bash
 docker compose up -d          # Postgres 16 (:5433) + MinIO S3 (:9000, console :9001)

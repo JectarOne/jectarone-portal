@@ -1,5 +1,64 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 19 — Monetization & Revenue Engine (2026-07-09, branch `sprint-19-monetization`)
+
+Commercial infrastructure: subscriptions, Stripe billing, plan enforcement,
+usage metering, AI credits, trials, and self-service billing. No new
+cybersecurity workflow features — see `docs/BILLING.md` for the full write-up.
+
+### Subscriptions & plans
+- `Subscription`, `UsageCounter`, `AiUsageLog`, `Invoice` models + migration
+  0012 (additive). Plans (`starter | professional | business | enterprise`)
+  are code-defined in `src/lib/plans.ts` — same pattern as roles/severities —
+  with per-plan limits (users/engagements/findings/storage/AI requests) and
+  feature flags (retest/api/branding/crm/integrations/whiteLabel/sso).
+- Every new signup starts a **14-day Professional-tier trial** (full-featured
+  funnel). `sweepTrialExpiry` lazily expires lapsed trials on dashboard load;
+  a daily cron sweep (`/api/cron/billing` + `.github/workflows/billing-cron.yml`)
+  catches trials nobody has logged into and sends the one-time "trial ending
+  soon" email.
+
+### Stripe integration (real + mock)
+- `src/lib/stripe.ts` / `src/lib/billing-sync.ts`: **the only code path that
+  writes plan/status is the verified Stripe webhook**
+  (`src/app/api/webhooks/stripe/route.ts` — signature-checked against
+  `STRIPE_WEBHOOK_SECRET`) handling `checkout.session.completed`,
+  `customer.subscription.updated/deleted`, `invoice.payment_succeeded/failed`.
+- When `STRIPE_SECRET_KEY` is unset (dev/CI), a **mock-checkout flow**
+  (`/dashboard/settings/billing/mock-checkout`) exercises the identical
+  state-transition functions the webhook uses — server-authorized, no network
+  call — mirroring the AI-provider mock pattern. Structurally unreachable once
+  Stripe is configured.
+- Checkout, Stripe-hosted Customer Portal, cancel/resume (ADMIN+).
+
+### Feature gating & usage metering
+- `requirePlan()` / `hasFeature()` (billing's answer to `requireRole()`) wired
+  into: retest requests (Professional+), API token creation (Professional+),
+  team invites (`maxUsers`), engagement creation (`maxEngagements`), AI
+  requests (monthly credit counter). `effectivePlan()` drops canceled/expired
+  subscriptions to Starter-level access regardless of the stored plan. All
+  limits enforced server-side — never trusted from the client.
+- AI requests now record a `UsageCounter` increment + `AiUsageLog` row per call.
+
+### Billing dashboard & revenue
+- `/dashboard/settings/billing`: current plan/status, usage vs. limits, plan
+  picker, invoice history, cancel/resume/manage-billing. Trial/past-due/expired
+  banners site-wide (`TrialBanner`, wired into the dashboard layout).
+- `/dashboard/admin/revenue`: internal MRR/ARR/ARPC/churn(approx.)/LTV(approx.)
+  dashboard, gated by a `PLATFORM_ADMIN_EMAILS` allowlist (no cross-tenant
+  "platform admin" role exists in this app's RBAC by design — documented
+  scope decision in `docs/BILLING.md`).
+- 6 new transactional email templates (trial started/ending, payment
+  succeeded/failed, subscription cancelled, plan upgraded) on the existing
+  SMTP infra — no new provider.
+
+### Tests
+Unit: plan hierarchy, `underLimit`, `effectivePlan` fallback, Stripe status
+mapping, trial-expiry date logic, annual-pricing math. E2E: billing-page
+rendering, trial banner, full mock-checkout upgrade flow, cancel/resume,
+non-admin denial, Starter-plan limit enforcement (seeded at its user and
+engagement caps). CI runs entirely in mock mode — no Stripe account needed.
+
 ## Sprint 18 — Retest Workflow (2026-07-09, branch `sprint-18-retest`)
 
 Completes the remediation lifecycle: Finding → Client Fix → **Retest → Verify → Close**.
