@@ -1,5 +1,26 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 18 — Retest Workflow (2026-07-09, branch `sprint-18-retest`)
+
+Completes the remediation lifecycle: Finding → Client Fix → **Retest → Verify → Close**.
+
+- **Model + migration 0011** (additive): `Retest` table + a nullable
+  `Evidence.retestId` (old vs new evidence) — existing data untouched.
+- **Lifecycle:** Requested → Scheduled → InProgress → Verified | Failed,
+  transition-enforced. **Verified** resolves the finding; **Failed** reopens it.
+  One open retest per finding.
+- **Actions** (MEMBER+, org-scoped, activity-logged): request (assignee + due
+  date), advance (schedule / in-progress), complete (verify/fail + result note),
+  notes.
+- **UI:** retest panel on the finding detail (request / advance / verify-fail /
+  history + old-vs-new evidence comparison); dashboard **retest-queue widget**
+  (waiting / failed / verified / average verification days).
+- **Fix:** retest advance field renamed to avoid colliding with the finding
+  status control on the same page.
+
+Tests: unit (lifecycle transitions, open/terminal) + E2E (request, verify→
+resolved, fail→reopened, dashboard widget, client blocked).
+
 ## Sprint 17 — Engagements (2026-07-08, branch `sprint-17-engagements`)
 
 First roadmap build: the **Engagement** entity — the `Client → Engagement →
