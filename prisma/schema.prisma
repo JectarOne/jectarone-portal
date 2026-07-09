@@ -86,7 +86,7 @@ model Subscription {
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
 
-  @@index([organizationId])
+  // organizationId needs no separate index — @unique above already creates one.
   @@index([status])
 }
 
