@@ -7,8 +7,18 @@ import { hasRole } from "@/lib/rbac";
 import { evidenceSchema, evidenceUploadSchema } from "@/lib/validation";
 import { logActivity } from "@/lib/activity";
 import { storageConfigured, presignUpload, evidenceKey, deleteObject, ALLOWED_EVIDENCE_TYPES, MAX_EVIDENCE_BYTES } from "@/lib/storage";
+import { getOrCreateSubscription, effectivePlan, orgStorageUsedBytes, storageAllows } from "@/lib/billing";
+import { PLAN_LIMITS } from "@/lib/plans";
 
 export type EvidenceState = { error?: string };
+
+/** Plan gate: would storing `incomingBytes` more evidence exceed the org's storage cap? */
+async function storageLimitError(orgId: string, incomingBytes: number): Promise<string | null> {
+  const sub = await getOrCreateSubscription(orgId);
+  const cap = PLAN_LIMITS[effectivePlan(sub)].storageBytes;
+  if (storageAllows(await orgStorageUsedBytes(orgId), incomingBytes, cap)) return null;
+  return "Storage limit reached for your plan. Upgrade in Settings → Billing or delete old evidence.";
+}
 
 /** Register evidence metadata against a finding (binary storage is a future integration). */
 export async function addEvidenceAction(findingId: string, _prev: EvidenceState, formData: FormData): Promise<EvidenceState> {
@@ -26,6 +36,8 @@ export async function addEvidenceAction(findingId: string, _prev: EvidenceState,
     note: formData.get("note"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  const capError = await storageLimitError(session.orgId, parsed.data.sizeBytes ?? 0);
+  if (capError) return { error: capError };
 
   await prisma.evidence.create({
     data: {
@@ -65,6 +77,8 @@ export async function presignEvidenceUploadAction(
   if (!parsed.success) return { error: "Invalid file." };
   if (!ALLOWED_EVIDENCE_TYPES[parsed.data.contentType]) return { error: "Unsupported file type. Allowed: PNG, JPG, PDF, TXT, ZIP." };
   if (parsed.data.size > MAX_EVIDENCE_BYTES) return { error: "File exceeds the 25 MB limit." };
+  const capError = await storageLimitError(session.orgId, parsed.data.size);
+  if (capError) return { error: capError };
 
   const key = evidenceKey(session.orgId, findingId, parsed.data.filename);
   const url = await presignUpload(key, parsed.data.contentType);
@@ -89,6 +103,10 @@ export async function registerEvidenceAction(
   if (!parsed.data.storageKey || !parsed.data.storageKey.startsWith(`org/${session.orgId}/`)) {
     return { error: "Invalid storage reference." };
   }
+  // Re-check the cap at registration: the presign check ran against
+  // pre-upload usage, and this size is what gets metered from here on.
+  const capError = await storageLimitError(session.orgId, parsed.data.sizeBytes ?? 0);
+  if (capError) return { error: capError };
 
   await prisma.evidence.create({
     data: {

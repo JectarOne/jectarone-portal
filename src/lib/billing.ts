@@ -133,13 +133,24 @@ export async function sweepAllBillingNotifications(): Promise<{ expired: number;
   return { expired: lapsed.count, notified };
 }
 
+/** Bytes of (non-deleted) evidence the org currently stores. */
+export async function orgStorageUsedBytes(organizationId: string): Promise<number> {
+  const agg = await prisma.evidence.aggregate({ where: { organizationId, deletedAt: null }, _sum: { sizeBytes: true } });
+  return agg._sum.sizeBytes ?? 0;
+}
+
+/** True if adding `incomingBytes` keeps the org within its plan's storage cap. */
+export function storageAllows(usedBytes: number, incomingBytes: number, limit: number | null): boolean {
+  return limit === null || usedBytes + incomingBytes <= limit;
+}
+
 /** Org-scoped counts used for limit checks (users/engagements/findings/storage). */
 export async function orgUsageSnapshot(organizationId: string) {
-  const [users, engagements, findings, evidenceAgg] = await Promise.all([
+  const [users, engagements, findings, storageBytes] = await Promise.all([
     prisma.membership.count({ where: { organizationId } }),
     prisma.engagement.count({ where: { organizationId, archivedAt: null } }),
     prisma.finding.count({ where: { organizationId, archivedAt: null } }),
-    prisma.evidence.aggregate({ where: { organizationId, deletedAt: null }, _sum: { sizeBytes: true } }),
+    orgStorageUsedBytes(organizationId),
   ]);
-  return { users, engagements, findings, storageBytes: evidenceAgg._sum.sizeBytes ?? 0 };
+  return { users, engagements, findings, storageBytes };
 }

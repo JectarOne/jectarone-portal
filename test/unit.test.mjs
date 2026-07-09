@@ -564,3 +564,15 @@ test("checkout stays open for trials, ended subscriptions, and orgs never on Str
   assert.equal(mustUsePortalFn({ stripeSubscriptionId: "sub_1", status: "expired" }), false);
   assert.equal(mustUsePortalFn({ stripeSubscriptionId: null, status: "active" }), false);
 });
+
+// Mirror of src/lib/billing.ts storageAllows — the evidence-upload storage cap
+// (used + incoming must fit; null = unlimited). Regression: Sprint 19 audit —
+// storageBytes was displayed but never enforced.
+const storageAllowsFn = (used, incoming, limit) => limit === null || used + incoming <= limit;
+test("storageAllows: inclusive cap, null = unlimited", () => {
+  const GB = 1024 * 1024 * 1024;
+  assert.equal(storageAllowsFn(0, 500, GB), true);
+  assert.equal(storageAllowsFn(GB - 500, 500, GB), true); // exactly at the cap
+  assert.equal(storageAllowsFn(GB - 499, 500, GB), false); // one byte over
+  assert.equal(storageAllowsFn(50 * GB, 25 * 1024 * 1024, null), true);
+});
