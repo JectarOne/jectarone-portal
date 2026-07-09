@@ -31,7 +31,7 @@
     "@sentry/nextjs": "^10.63.0",
     "bcryptjs": "^2.4.3",
     "docx": "^9.7.1",
-    "jose": "^5.9.6",
+    "jose": "^6.2.3",
     "next": "^15.1.4",
     "nodemailer": "^9.0.3",
     "openai": "^6.45.0",
