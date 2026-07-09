@@ -87,3 +87,57 @@ export function resetPasswordTemplate(link: string): Mail {
     html: `<p>Someone requested a password reset for your JectarOne account. Set a new password:</p><p><a href="${link}">Reset password</a></p><p>This link expires in 1 hour and can be used once. If you didn't request this, ignore this email — your password is unchanged.</p>`,
   };
 }
+
+/* ---------- Sprint 19: billing lifecycle templates ---------- */
+
+export function trialStartedTemplate(orgName: string, trialEndsAt: Date): Mail {
+  const d = trialEndsAt.toISOString().slice(0, 10);
+  return {
+    to: "", subject: "Your JectarOne free trial has started",
+    text: `Your 14-day trial for ${orgName} is active until ${d}. Explore engagements, findings, and AI-assisted reporting — upgrade any time from Settings → Billing.`,
+    html: `<p>Your 14-day trial for <strong>${orgName}</strong> is active until ${d}.</p><p>Explore engagements, findings, and AI-assisted reporting — upgrade any time from Settings → Billing.</p>`,
+  };
+}
+
+export function trialEndingTemplate(orgName: string, trialEndsAt: Date): Mail {
+  const d = trialEndsAt.toISOString().slice(0, 10);
+  return {
+    to: "", subject: "Your JectarOne trial ends soon",
+    text: `Your trial for ${orgName} ends on ${d}. Upgrade from Settings → Billing to keep access without interruption.`,
+    html: `<p>Your trial for <strong>${orgName}</strong> ends on ${d}.</p><p>Upgrade from Settings → Billing to keep access without interruption.</p>`,
+  };
+}
+
+export function paymentSucceededTemplate(orgName: string, amountCents: number, currency: string): Mail {
+  const amt = (amountCents / 100).toFixed(2);
+  return {
+    to: "", subject: "Payment received — JectarOne",
+    text: `We received your payment of ${amt} ${currency.toUpperCase()} for ${orgName}. Thank you for being a JectarOne customer.`,
+    html: `<p>We received your payment of <strong>${amt} ${currency.toUpperCase()}</strong> for ${orgName}.</p><p>Thank you for being a JectarOne customer.</p>`,
+  };
+}
+
+export function paymentFailedTemplate(orgName: string): Mail {
+  return {
+    to: "", subject: "Payment failed — action needed",
+    text: `We couldn't process your latest payment for ${orgName}. Please update your payment method from Settings → Billing to avoid service interruption.`,
+    html: `<p>We couldn't process your latest payment for <strong>${orgName}</strong>.</p><p>Please update your payment method from Settings → Billing to avoid service interruption.</p>`,
+  };
+}
+
+export function subscriptionCancelledTemplate(orgName: string, endsAt: Date | null): Mail {
+  const when = endsAt ? ` Your access continues until ${endsAt.toISOString().slice(0, 10)}.` : "";
+  return {
+    to: "", subject: "Subscription cancelled — JectarOne",
+    text: `Your subscription for ${orgName} has been cancelled.${when} You can resume any time from Settings → Billing.`,
+    html: `<p>Your subscription for <strong>${orgName}</strong> has been cancelled.${when}</p><p>You can resume any time from Settings → Billing.</p>`,
+  };
+}
+
+export function planUpgradedTemplate(orgName: string, plan: string): Mail {
+  return {
+    to: "", subject: `Plan upgraded to ${plan} — JectarOne`,
+    text: `${orgName} is now on the ${plan} plan. Thanks for growing with JectarOne.`,
+    html: `<p><strong>${orgName}</strong> is now on the <strong>${plan}</strong> plan.</p><p>Thanks for growing with JectarOne.</p>`,
+  };
+}

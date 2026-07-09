@@ -54,6 +54,93 @@ model Organization {
   findingTemplates FindingTemplate[]
   engagements Engagement[]
   retests     Retest[]
+  subscription Subscription?
+  usageCounters UsageCounter[]
+  aiUsageLogs AiUsageLog[]
+  invoices    Invoice[]
+}
+
+// Sprint 19 — one Stripe-backed subscription per organization. Plan/status are
+// validated strings (same pattern as roles/severities) mirrored from Stripe via
+// webhooks — never trust a plan value written by anything other than server code
+// reacting to a verified webhook or an admin action.
+model Subscription {
+  id                   String       @id @default(cuid())
+  organizationId       String       @unique
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  plan                 String       @default("starter")   // starter|professional|business|enterprise
+  status               String       @default("trialing")  // trialing|active|past_due|canceled|expired
+  billingCycle         String       @default("monthly")   // monthly|annual
+
+  stripeCustomerId     String?      @unique
+  stripeSubscriptionId String?      @unique
+  stripePriceId        String?
+
+  trialEndsAt          DateTime?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean      @default(false)
+  trialEndingNotifiedAt DateTime?   // guards the one-time "trial ending soon" email
+
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+// Sprint 19 — monthly usage counters per organization, keyed by calendar
+// period ("2026-07"). Natural monthly reset with no cron job: a new period
+// string simply starts a fresh row.
+model UsageCounter {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  period         String       // "YYYY-MM"
+  aiRequests     Int          @default(0)
+  reportsGenerated Int        @default(0)
+  apiRequests    Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, period])
+}
+
+// Sprint 19 — per-request AI usage log (for cost visibility / support debugging).
+// UsageCounter.aiRequests is the fast enforcement path; this is the detail trail.
+model AiUsageLog {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId           String?
+  provider         String
+  model            String?
+  capability       String
+  promptTokens     Int?
+  completionTokens Int?
+  totalTokens      Int?
+  costEstimateCents Float?
+  createdAt        DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
+}
+
+// Sprint 19 — local mirror of Stripe invoices for fast display without an API
+// round-trip on every billing-page load. Populated from the invoice.* webhooks.
+model Invoice {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stripeInvoiceId String       @unique
+  number          String?
+  amountPaidCents Int
+  currency        String       @default("usd")
+  status          String       // paid|open|void|uncollectible
+  invoicePdf      String?
+  createdAt       DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
 }
 
 // Reusable finding library — consultants create findings from templates with

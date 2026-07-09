@@ -4,6 +4,9 @@ import { logoutAction } from "@/actions/auth";
 import { roleLabel } from "@/lib/rbac";
 import { NavLink, Avatar } from "@/components/nav-link";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { TrialBanner } from "@/components/trial-banner";
+import { hasRole } from "@/lib/rbac";
+import { getOrCreateSubscription, sweepTrialExpiry } from "@/lib/billing";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -11,6 +14,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Gate the app on a verified email. Existing accounts were grandfathered by
   // the 0003 migration; only new, unverified signups are redirected.
   if (!session.user.emailVerifiedAt) redirect("/verify-email");
+
+  await sweepTrialExpiry(session.orgId);
+  const subscription = await getOrCreateSubscription(session.orgId);
 
   return (
     <div className="shell">
@@ -44,7 +50,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </form>
         </div>
       </aside>
-      <main className="main" id="main">{children}</main>
+      <main className="main" id="main">
+        <TrialBanner status={subscription.status} trialEndsAt={subscription.trialEndsAt} canManage={hasRole(session.role, "ADMIN")} />
+        {children}
+      </main>
     </div>
   );
 }
