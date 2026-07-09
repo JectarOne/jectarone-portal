@@ -503,17 +503,26 @@ test("effectivePlan: trialing/active/past_due keep the purchased tier", () => {
   assert.equal(effectivePlanFn({ plan: "professional", status: "past_due" }), "professional");
 });
 
-// Mirror of src/lib/stripe.ts mapStripeStatus.
+// Mirror of src/lib/stripe.ts mapStripeStatus. Deny-by-default: any status
+// outside our vocabulary means "not in good standing" (regression: Sprint 19
+// audit — `paused`/`incomplete`/unknown used to map to "active", granting
+// paid-tier access without payment).
 function mapStripeStatusFn(status) {
   if (["trialing", "active", "past_due", "canceled"].includes(status)) return status;
-  if (["unpaid", "incomplete_expired"].includes(status)) return "expired";
-  return "active";
+  return "expired";
 }
 test("mapStripeStatus normalizes Stripe's status vocabulary to ours", () => {
   assert.equal(mapStripeStatusFn("trialing"), "trialing");
+  assert.equal(mapStripeStatusFn("active"), "active");
+  assert.equal(mapStripeStatusFn("past_due"), "past_due");
+  assert.equal(mapStripeStatusFn("canceled"), "canceled");
+});
+test("mapStripeStatus denies access for every not-in-good-standing or unknown status", () => {
   assert.equal(mapStripeStatusFn("unpaid"), "expired");
+  assert.equal(mapStripeStatusFn("incomplete"), "expired");
   assert.equal(mapStripeStatusFn("incomplete_expired"), "expired");
-  assert.equal(mapStripeStatusFn("incomplete"), "active");
+  assert.equal(mapStripeStatusFn("paused"), "expired");
+  assert.equal(mapStripeStatusFn("some_future_status"), "expired");
 });
 
 // Mirror of src/lib/billing.ts sweepTrialExpiry date-comparison logic.

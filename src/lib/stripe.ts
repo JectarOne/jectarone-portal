@@ -35,8 +35,11 @@ export function planForPriceId(priceId: string): Plan | null {
 export function mapStripeStatus(status: string): string {
   // Stripe: trialing|active|past_due|canceled|unpaid|incomplete|incomplete_expired|paused
   if (status === "trialing" || status === "active" || status === "past_due" || status === "canceled") return status;
-  if (status === "unpaid" || status === "incomplete_expired") return "expired";
-  return "active";
+  // Everything else — unpaid, incomplete, incomplete_expired, paused, and any
+  // status Stripe adds later — means "not in good standing". Deny by default:
+  // mapping an unrecognized status to "active" would grant paid-tier access
+  // without payment (e.g. `paused` = trial ended with no payment method).
+  return "expired";
 }
 
 export { isPlan };
