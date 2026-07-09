@@ -6,15 +6,24 @@ import { logger } from "@/lib/logger";
 
 const TRIAL_DAYS = 14;
 
+/** Row data for a brand-new 14-day Professional-tier trial — the single source
+ * of truth for trial defaults, used by signup (eager, inside its transaction)
+ * and getOrCreateSubscription (lazy, for orgs that pre-date billing). */
+export function newTrialSubscriptionData(organizationId: string) {
+  return {
+    organizationId,
+    plan: "professional",
+    status: "trialing",
+    trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 86_400_000),
+  };
+}
+
 /** Get (or lazily provision) the org's subscription row. New orgs start on a
  * 14-day Professional-tier trial so they see the platform's full value. */
 export async function getOrCreateSubscription(organizationId: string) {
   const existing = await prisma.subscription.findUnique({ where: { organizationId } });
   if (existing) return existing;
-  const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 86_400_000);
-  return prisma.subscription.create({
-    data: { organizationId, plan: "professional", status: "trialing", trialEndsAt },
-  });
+  return prisma.subscription.create({ data: newTrialSubscriptionData(organizationId) });
 }
 
 /**
@@ -35,10 +44,6 @@ export async function sweepTrialExpiry(organizationId: string): Promise<void> {
 export function effectivePlan(sub: { plan: string; status: string }): Plan {
   if (sub.status === "canceled" || sub.status === "expired") return "starter";
   return isPlan(sub.plan) ? sub.plan : "starter";
-}
-
-export function isSubscriptionUsable(sub: { status: string }): boolean {
-  return sub.status === "trialing" || sub.status === "active" || sub.status === "past_due";
 }
 
 /** requireRole()'s sibling for commercial gating. Never trust a client-sent plan. */

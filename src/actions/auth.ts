@@ -8,6 +8,7 @@ import { signupSchema, loginSchema, slugify } from "@/lib/validation";
 import { loginThrottled, recordFailedLogin, clearLoginAttempts, ipThrottled, recordAttempt } from "@/lib/rate-limit";
 import { issueToken } from "@/lib/token";
 import { sendMail, verifyEmailTemplate, trialStartedTemplate, appUrl } from "@/lib/email";
+import { newTrialSubscriptionData } from "@/lib/billing";
 
 export type ActionState = { error?: string };
 
@@ -44,20 +45,18 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
   }
 
   const passwordHash = await hashPassword(password);
-  const trialEndsAt = new Date(Date.now() + 14 * 86_400_000);
 
-  const membership = await prisma.$transaction(async (tx) => {
+  const { membership, trialEndsAt } = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({ data: { name, email, passwordHash } });
     const org = await tx.organization.create({ data: { name: organization, slug } });
     // Every new organization starts on a 14-day full-featured (Professional
-    // tier) trial — see src/lib/billing.ts for the same defaults used when a
-    // subscription row is lazily provisioned for pre-existing organizations.
-    await tx.subscription.create({
-      data: { organizationId: org.id, plan: "professional", status: "trialing", trialEndsAt },
-    });
-    return tx.membership.create({
+    // tier) trial — same defaults as the lazy provisioning path in billing.ts.
+    const trial = newTrialSubscriptionData(org.id);
+    await tx.subscription.create({ data: trial });
+    const membership = await tx.membership.create({
       data: { userId: user.id, organizationId: org.id, role: "OWNER" },
     });
+    return { membership, trialEndsAt: trial.trialEndsAt };
   });
 
   // Issue an email-verification token and send it. Failure to send must not
