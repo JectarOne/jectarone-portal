@@ -538,3 +538,20 @@ test("annual pricing is a 10x-monthly discount (2 months free)", () => {
   assert.equal(PLAN_PRICE.professional.annual, PLAN_PRICE.professional.monthly * 10);
   assert.ok(PLAN_PRICE.professional.annual < PLAN_PRICE.professional.monthly * 12);
 });
+
+// Mirror of src/actions/billing.ts startCheckoutAction's double-subscription
+// guard: an org with a live Stripe subscription must change plans via the
+// Billing Portal — a second Checkout would create a parallel subscription
+// (double billing). Regression: Sprint 19 audit.
+const mustUsePortalFn = (sub) =>
+  Boolean(sub.stripeSubscriptionId) && (sub.status === "active" || sub.status === "past_due");
+test("checkout is blocked for orgs with a live Stripe subscription", () => {
+  assert.equal(mustUsePortalFn({ stripeSubscriptionId: "sub_1", status: "active" }), true);
+  assert.equal(mustUsePortalFn({ stripeSubscriptionId: "sub_1", status: "past_due" }), true);
+});
+test("checkout stays open for trials, ended subscriptions, and orgs never on Stripe", () => {
+  assert.equal(mustUsePortalFn({ stripeSubscriptionId: null, status: "trialing" }), false);
+  assert.equal(mustUsePortalFn({ stripeSubscriptionId: "sub_1", status: "canceled" }), false);
+  assert.equal(mustUsePortalFn({ stripeSubscriptionId: "sub_1", status: "expired" }), false);
+  assert.equal(mustUsePortalFn({ stripeSubscriptionId: null, status: "active" }), false);
+});

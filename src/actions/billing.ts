@@ -39,11 +39,19 @@ export async function startCheckoutAction(_prev: BillingState, fd: FormData): Pr
     redirect(`${BILLING_PATH}/mock-checkout?plan=${plan}&cycle=${cycle}`);
   }
 
+  const sub = await getOrCreateSubscription(session.orgId);
+  // An org with a live Stripe subscription must change plans through the
+  // Billing Portal, which modifies the existing subscription in place. A new
+  // Checkout Session would create a second, parallel subscription — the org
+  // would be billed for both.
+  if (sub.stripeSubscriptionId && (sub.status === "active" || sub.status === "past_due")) {
+    return { error: "You already have a subscription — use “Manage billing” to change plans." };
+  }
+
   const priceId = priceIdFor(plan, cycle);
   if (!priceId) return { error: "This plan is not available for self-service checkout yet." };
 
   const stripe = await getStripe();
-  const sub = await getOrCreateSubscription(session.orgId);
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
