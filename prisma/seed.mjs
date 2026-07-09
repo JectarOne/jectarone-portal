@@ -14,6 +14,7 @@
 
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 
 const prisma = new PrismaClient();
 const PASSWORD = "Passw0rd!123";
@@ -114,6 +115,18 @@ async function main() {
   });
   const currentPeriod = `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`;
   await prisma.usageCounter.create({ data: { organizationId: northwind.id, period: currentPeriod, aiRequests: 12, reportsGenerated: 2 } });
+
+  // ---- API tokens (raw values are E2E fixtures — see test/e2e/billing.spec.ts) ----
+  // Northwind: Professional (has the "api" feature) → token works.
+  // Acme Starter: token minted before a hypothetical downgrade → must be
+  // rejected per-request now that the org's plan lacks the "api" feature.
+  const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
+  await prisma.apiToken.createMany({
+    data: [
+      { organizationId: northwind.id, userId: admin.id, name: "E2E token", prefix: "jo_e2en", tokenHash: sha256("jo_e2e_northwind_000000000000") },
+      { organizationId: starterOrg.id, userId: starterOwner.id, name: "E2E starter token", prefix: "jo_e2es", tokenHash: sha256("jo_e2e_starter_00000000000000") },
+    ],
+  });
 
   // ---- Built-in finding templates (organizationId: null → visible to all orgs) ----
   await prisma.findingTemplate.createMany({

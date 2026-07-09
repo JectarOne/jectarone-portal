@@ -62,6 +62,23 @@ test.describe("billing dashboard", () => {
   });
 });
 
+test.describe("API token plan gating", () => {
+  // Regression (Sprint 19 audit): only token *creation* was plan-gated. A token
+  // minted while an org had the "api" feature kept working forever after a
+  // downgrade/cancellation/trial expiry. The gate must run on every request.
+  test("token from an org whose plan lacks the api feature is rejected; Professional token works", async ({ request }) => {
+    const ok = await request.get("/api/v1/findings", {
+      headers: { authorization: "Bearer jo_e2e_northwind_000000000000" }, // Northwind: Professional
+    });
+    expect(ok.status()).toBe(200);
+
+    const blocked = await request.get("/api/v1/findings", {
+      headers: { authorization: "Bearer jo_e2e_starter_00000000000000" }, // Acme Starter: no api feature
+    });
+    expect(blocked.status()).toBe(403);
+  });
+});
+
 test.describe("plan limit enforcement", () => {
   test("Starter org at its user limit cannot invite another member", async ({ page }) => {
     await login(page, USERS.starterOwner); // already has 2/2 users (Starter cap)

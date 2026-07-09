@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import { prisma } from "./db";
 import { getSession, type Session } from "./auth";
 import { hasRole, type Role } from "./rbac";
+import { getOrCreateSubscription, hasFeature } from "./billing";
 
 /** Resolve an org API token from `Authorization: Bearer jo_…` into a Session. */
 async function sessionFromApiToken(): Promise<Session | null> {
@@ -29,9 +30,19 @@ async function sessionFromApiToken(): Promise<Session | null> {
 
 /** Resolve the caller (session cookie OR API token), or return a 401 response. */
 export async function apiSession(): Promise<{ session: Session } | { response: NextResponse }> {
-  const session = (await getSession()) ?? (await sessionFromApiToken());
-  if (!session) return { response: NextResponse.json({ error: "Not authenticated." }, { status: 401 }) };
-  return { session };
+  const cookieSession = await getSession();
+  if (cookieSession) return { session: cookieSession };
+
+  const tokenSession = await sessionFromApiToken();
+  if (!tokenSession) return { response: NextResponse.json({ error: "Not authenticated." }, { status: 401 }) };
+  // Plan gate: API access is a plan feature, checked on every request — a token
+  // minted while the org had the feature must stop working after a downgrade,
+  // cancellation, or trial expiry (token *creation* alone can't enforce that).
+  const sub = await getOrCreateSubscription(tokenSession.orgId);
+  if (!hasFeature(sub, "api")) {
+    return { response: NextResponse.json({ error: "API access is not included in your current plan. Upgrade in Settings → Billing." }, { status: 403 }) };
+  }
+  return { session: tokenSession };
 }
 
 export function requireRoleOr403(session: Session, min: Role): NextResponse | null {
