@@ -1,0 +1,27 @@
+name: Billing sweep
+
+# Daily: expire lapsed trials, send "trial ending soon" emails. Requires the
+# CRON_SECRET repo secret to match the app's CRON_SECRET env var.
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger billing sweep
+        run: |
+          code=$(curl -s -o /tmp/out -w "%{http_code}" -X POST \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            https://portal.jectar.one/api/cron/billing || echo 000)
+          echo "HTTP $code"; cat /tmp/out || true
+          if [ "$code" != "200" ]; then
+            echo "::error::billing sweep returned $code"
+            exit 1
+          fi
