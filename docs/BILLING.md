@@ -48,10 +48,21 @@ AI-provider mock pattern (`src/lib/ai/provider.ts`) used elsewhere in the app.
   (`past_due` is a grace period, not a hard lock).
 - `requirePlan(sub, min)` / `hasFeature(sub, "retest")` — call these in every gated
   server action, the same way `hasRole(session.role, "ADMIN")` is called. **Limits
-  are enforced server-side only** — see `src/actions/{retest,team,engagements,ai,api-tokens}.ts`
+  are enforced server-side only** — see
+  `src/actions/{retest,team,engagements,findings,evidence,ai,api-tokens}.ts`
   for the wired examples (retest requires Professional+, team invites respect
-  `maxUsers`, engagement creation respects `maxEngagements`, AI requests respect
-  the monthly counter, API tokens require the `api` feature).
+  `maxUsers`, engagement creation respects `maxEngagements`, finding creation
+  respects `maxFindings`, evidence uploads respect `storageBytes`, AI requests
+  respect the monthly counter).
+- **API tokens are gated per request**, not just at creation: `apiSession()`
+  (`src/lib/api.ts`) re-checks `hasFeature(sub, "api")` for every token-authenticated
+  call, so a token minted during a trial stops working after a downgrade,
+  cancellation, or trial expiry (403 with an upgrade hint).
+- **AI credits are reserved atomically** (`reserveAiRequest` in `src/lib/billing.ts`):
+  the limit check and the increment are one conditional UPDATE, so concurrent
+  requests cannot overshoot the monthly allowance. The credit is spent once the
+  request reaches the provider (refusals included) and refunded if the provider
+  call throws. Integration coverage: `npm run test:billing` (real Postgres).
 - `getOrCreateSubscription(orgId)` lazily provisions a 14-day Professional-tier
   trial for any org that doesn't have a subscription row yet (defensive — new
   signups get one eagerly in `signupAction`, so this only fires for edge cases).

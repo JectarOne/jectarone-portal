@@ -1,5 +1,42 @@
 # Changelog — JectarOne Client Portal
 
+## Sprint 19 audit — billing hardening (2026-07-09)
+
+Full engineering audit of the Sprint 19 implementation. Architecture kept
+as-is; fixes below are correctness/security only, each with a regression test.
+
+### Security / billing bypasses (High)
+- **API tokens now re-check the `api` plan feature on every request**
+  (`src/lib/api.ts`). Previously only token *creation* was gated, so a token
+  minted during the trial kept working forever after a downgrade/cancellation.
+  403 with an upgrade hint; cookie sessions unaffected. E2E regression.
+- **Checkout is blocked for orgs with a live Stripe subscription**
+  (`src/actions/billing.ts`). Stripe Checkout always creates a *new*
+  subscription, so an active customer clicking a plan card would have been
+  double-billed. Plan changes go through the Billing Portal instead.
+- **Stripe status mapping is deny-by-default** (`src/lib/stripe.ts`).
+  `paused`, `incomplete`, and unknown future statuses used to map to `active`
+  (paid access without payment); they now map to `expired` → Starter access.
+
+### Enforcement gaps (Medium)
+- **`maxFindings` enforced** in `createFindingAction` (was display-only;
+  Starter orgs could create unlimited findings). Seeded fixture + E2E test.
+- **`storageBytes` enforced** across all three evidence entry points
+  (was display-only; only the per-file 25 MB cap existed).
+- **AI quota reservation is atomic** (`reserveAiRequest`): the old
+  check-then-increment pair let concurrent requests overshoot the monthly
+  limit, and the first request of a new month could 500 on a P2002 insert
+  race. New integration suite (`npm run test:billing`) proves 25 concurrent
+  requests against a limit of 5 grant exactly 5.
+
+### Hygiene (Low)
+- Constant-time comparison for the `x-cron-secret` header.
+- Trial defaults deduplicated into `newTrialSubscriptionData()` (signup +
+  lazy provisioning shared one source of truth); dead `isSubscriptionUsable`
+  removed.
+- Migration 0013: dropped the redundant non-unique index on
+  `Subscription.organizationId` (the `@unique` index already covers it).
+
 ## Sprint 19 — Monetization & Revenue Engine (2026-07-09, branch `sprint-19-monetization`)
 
 Commercial infrastructure: subscriptions, Stripe billing, plan enforcement,
