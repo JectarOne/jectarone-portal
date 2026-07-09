@@ -48,7 +48,7 @@ export default async function BillingPage() {
       )}
       {sub.status === "expired" && (
         <div className="alert alert-error" style={{ marginBottom: "1rem" }}>
-          Your trial has ended. Choose a plan below to keep full access — you're currently limited to the Starter tier.
+          Your trial has ended. Choose a plan below to keep full access — you&apos;re currently limited to the Starter tier.
         </div>
       )}
       {sub.status === "past_due" && (

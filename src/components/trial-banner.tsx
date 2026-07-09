@@ -19,7 +19,7 @@ export function TrialBanner({
   if (status === "expired") {
     return (
       <div className="trial-banner trial-banner-expired" role="alert">
-        <span>Your trial has ended — you're on limited Starter access.</span>
+        <span>Your trial has ended — you&apos;re on limited Starter access.</span>
         {canManage && <Link href="/dashboard/settings/billing">Choose a plan</Link>}
       </div>
     );
