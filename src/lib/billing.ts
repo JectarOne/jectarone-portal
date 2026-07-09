@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { PLAN_LIMITS, isPlan, hasPlan, type Plan, type PlanFeatures, underLimit } from "@/lib/plans";
+import { PLAN_LIMITS, isPlan, hasPlan, type Plan, type PlanFeatures } from "@/lib/plans";
 import { sendMail, trialEndingTemplate } from "@/lib/email";
 import { logger } from "@/lib/logger";
 
@@ -56,29 +56,42 @@ function currentPeriodKey(): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+/** Ensure this month's counter row exists. createMany+skipDuplicates is atomic
+ * under the unique constraint, where a read-then-create pair can throw P2002
+ * when two requests race on the first hit of a new month. */
+async function ensureUsageCounter(organizationId: string, period: string): Promise<void> {
+  await prisma.usageCounter.createMany({ data: [{ organizationId, period }], skipDuplicates: true });
+}
+
 export async function getOrCreateUsageCounter(organizationId: string) {
   const period = currentPeriodKey();
-  const existing = await prisma.usageCounter.findUnique({ where: { organizationId_period: { organizationId, period } } });
-  if (existing) return existing;
-  return prisma.usageCounter.create({ data: { organizationId, period } });
+  await ensureUsageCounter(organizationId, period);
+  return prisma.usageCounter.findUniqueOrThrow({ where: { organizationId_period: { organizationId, period } } });
 }
 
-/** True if the org has AI requests remaining this month under its plan. */
-export async function hasAiCreditsRemaining(organizationId: string, sub: { plan: string; status: string }): Promise<boolean> {
-  const plan = effectivePlan(sub);
-  const limit = PLAN_LIMITS[plan].aiRequestsPerMonth;
-  if (limit === null) return true;
-  const counter = await getOrCreateUsageCounter(organizationId);
-  return underLimit(counter.aiRequests, limit);
-}
-
-/** Atomically record one AI request against this month's usage counter. */
-export async function recordAiRequest(organizationId: string): Promise<void> {
+/**
+ * Atomically reserve one AI request against this month's counter, enforcing
+ * the plan's monthly allowance in the same UPDATE (`aiRequests < limit` in the
+ * WHERE clause). A separate check-then-increment pair would let concurrent
+ * requests all pass the check and overshoot the limit. Returns false when the
+ * allowance is used up.
+ */
+export async function reserveAiRequest(organizationId: string, sub: { plan: string; status: string }): Promise<boolean> {
+  const limit = PLAN_LIMITS[effectivePlan(sub)].aiRequestsPerMonth;
   const period = currentPeriodKey();
-  await prisma.usageCounter.upsert({
-    where: { organizationId_period: { organizationId, period } },
-    create: { organizationId, period, aiRequests: 1 },
-    update: { aiRequests: { increment: 1 } },
+  await ensureUsageCounter(organizationId, period);
+  const reserved = await prisma.usageCounter.updateMany({
+    where: { organizationId, period, ...(limit === null ? {} : { aiRequests: { lt: limit } }) },
+    data: { aiRequests: { increment: 1 } },
+  });
+  return reserved.count === 1;
+}
+
+/** Refund a reservation whose request never reached the provider. */
+export async function releaseAiRequest(organizationId: string): Promise<void> {
+  await prisma.usageCounter.updateMany({
+    where: { organizationId, period: currentPeriodKey(), aiRequests: { gt: 0 } },
+    data: { aiRequests: { decrement: 1 } },
   });
 }
 

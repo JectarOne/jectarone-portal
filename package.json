@@ -19,6 +19,7 @@
     "test": "node --test test/unit.test.mjs test/security.test.mjs",
     "test:unit": "node --test test/unit.test.mjs test/security.test.mjs",
     "test:storage": "node --test test/integration/storage.test.mjs",
+    "test:billing": "node --test test/integration/billing-metering.test.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {
