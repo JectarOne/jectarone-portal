@@ -35,6 +35,10 @@ function daysAgo(n) {
 async function wipe() {
   // Delete in FK-safe order (children first).
   await prisma.activityLog.deleteMany();
+  await prisma.aiUsageLog.deleteMany();
+  await prisma.usageCounter.deleteMany();
+  await prisma.invoice.deleteMany();
+  await prisma.subscription.deleteMany();
   await prisma.findingTemplate.deleteMany();
   await prisma.findingComment.deleteMany();
   await prisma.evidence.deleteMany();
@@ -59,10 +63,14 @@ async function main() {
   const consultant = await prisma.user.create({ data: { name: "Karim Idrissi", email: "consultant@northwind.test", passwordHash, emailVerifiedAt: new Date() } });
   const client = await prisma.user.create({ data: { name: "Sofia Client", email: "client@northwind.test", passwordHash, emailVerifiedAt: new Date() } });
   const globexAdmin = await prisma.user.create({ data: { name: "Otto Globex", email: "admin@globex.test", passwordHash, emailVerifiedAt: new Date() } });
+  // Sprint 19 — a Starter-plan org for billing/limit-enforcement tests.
+  const starterOwner = await prisma.user.create({ data: { name: "Sam Starter", email: "owner@acme-starter.test", passwordHash, emailVerifiedAt: new Date() } });
+  const starterMember = await prisma.user.create({ data: { name: "Robin Small", email: "member@acme-starter.test", passwordHash, emailVerifiedAt: new Date() } });
 
   // ---- Orgs + memberships ----
   const northwind = await prisma.organization.create({ data: { name: "Northwind Corp", slug: "northwind" } });
   const globex = await prisma.organization.create({ data: { name: "Globex Inc", slug: "globex" } });
+  const starterOrg = await prisma.organization.create({ data: { name: "Acme Starter Co", slug: "acme-starter" } });
 
   await prisma.membership.createMany({
     data: [
@@ -70,8 +78,42 @@ async function main() {
       { userId: consultant.id, organizationId: northwind.id, role: "MEMBER" },
       { userId: client.id, organizationId: northwind.id, role: "CLIENT" },
       { userId: globexAdmin.id, organizationId: globex.id, role: "OWNER" },
+      { userId: starterOwner.id, organizationId: starterOrg.id, role: "OWNER" },
+      { userId: starterMember.id, organizationId: starterOrg.id, role: "MEMBER" },
     ],
   });
+
+  // ---- Sprint 19: Subscriptions ----
+  // Northwind: our reference paying customer (Professional, active).
+  await prisma.subscription.create({
+    data: {
+      organizationId: northwind.id, plan: "professional", status: "active", billingCycle: "monthly",
+      stripeCustomerId: "mock_cus_northwind", stripeSubscriptionId: "mock_sub_northwind",
+      currentPeriodStart: daysAgo(10), currentPeriodEnd: daysAgo(-20),
+    },
+  });
+  await prisma.invoice.create({
+    data: { organizationId: northwind.id, stripeInvoiceId: "mock_inv_northwind_1", number: "INV-0001", amountPaidCents: 14900, currency: "usd", status: "paid", createdAt: daysAgo(10) },
+  });
+  // Globex: mid-trial.
+  await prisma.subscription.create({
+    data: { organizationId: globex.id, plan: "professional", status: "trialing", trialEndsAt: daysAgo(-9) },
+  });
+  // Acme Starter Co: Starter plan, already AT its user (2) and engagement (5) limits.
+  await prisma.subscription.create({
+    data: {
+      organizationId: starterOrg.id, plan: "starter", status: "active", billingCycle: "monthly",
+      stripeCustomerId: "mock_cus_starter", stripeSubscriptionId: "mock_sub_starter",
+      currentPeriodStart: daysAgo(5), currentPeriodEnd: daysAgo(-25),
+    },
+  });
+  await prisma.engagement.createMany({
+    data: Array.from({ length: 5 }, (_, i) => ({
+      organizationId: starterOrg.id, name: `Starter Engagement ${i + 1}`, clientName: "Acme Starter Co", status: "Active",
+    })),
+  });
+  const currentPeriod = `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`;
+  await prisma.usageCounter.create({ data: { organizationId: northwind.id, period: currentPeriod, aiRequests: 12, reportsGenerated: 2 } });
 
   // ---- Built-in finding templates (organizationId: null → visible to all orgs) ----
   await prisma.findingTemplate.createMany({

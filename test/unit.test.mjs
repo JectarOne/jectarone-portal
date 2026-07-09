@@ -464,3 +464,77 @@ test("retest open/terminal classification", () => {
   assert.equal(rtIsOpen("Verified"), false);
   assert.equal(rtIsOpen("Failed"), false);
 });
+
+// Mirror of src/lib/plans.ts.
+const PLANS = ["starter", "professional", "business", "enterprise"];
+const PLAN_RANK = { starter: 0, professional: 1, business: 2, enterprise: 3 };
+const isPlanFn = (v) => PLANS.includes(v);
+const hasPlanFn = (plan, min) => (isPlanFn(plan) ? PLAN_RANK[plan] >= PLAN_RANK[min] : false);
+const underLimitFn = (current, limit) => limit === null || current < limit;
+test("hasPlan respects the tier hierarchy", () => {
+  assert.equal(hasPlanFn("business", "professional"), true);
+  assert.equal(hasPlanFn("professional", "professional"), true);
+  assert.equal(hasPlanFn("starter", "professional"), false);
+  assert.equal(hasPlanFn("enterprise", "starter"), true);
+});
+test("hasPlan rejects unknown plan strings", () => {
+  assert.equal(hasPlanFn("gold", "starter"), false);
+});
+test("underLimit: null is unlimited, numeric is a strict less-than boundary", () => {
+  assert.equal(underLimitFn(999, null), true);
+  assert.equal(underLimitFn(4, 5), true);
+  assert.equal(underLimitFn(5, 5), false);
+  assert.equal(underLimitFn(6, 5), false);
+});
+
+// Mirror of src/lib/billing.ts effectivePlan — canceled/expired always fall
+// back to starter-level access regardless of the stored plan.
+function effectivePlanFn(sub) {
+  if (sub.status === "canceled" || sub.status === "expired") return "starter";
+  return isPlanFn(sub.plan) ? sub.plan : "starter";
+}
+test("effectivePlan: canceled/expired subscriptions lose paid-tier access", () => {
+  assert.equal(effectivePlanFn({ plan: "business", status: "canceled" }), "starter");
+  assert.equal(effectivePlanFn({ plan: "professional", status: "expired" }), "starter");
+});
+test("effectivePlan: trialing/active/past_due keep the purchased tier", () => {
+  assert.equal(effectivePlanFn({ plan: "professional", status: "trialing" }), "professional");
+  assert.equal(effectivePlanFn({ plan: "business", status: "active" }), "business");
+  assert.equal(effectivePlanFn({ plan: "professional", status: "past_due" }), "professional");
+});
+
+// Mirror of src/lib/stripe.ts mapStripeStatus.
+function mapStripeStatusFn(status) {
+  if (["trialing", "active", "past_due", "canceled"].includes(status)) return status;
+  if (["unpaid", "incomplete_expired"].includes(status)) return "expired";
+  return "active";
+}
+test("mapStripeStatus normalizes Stripe's status vocabulary to ours", () => {
+  assert.equal(mapStripeStatusFn("trialing"), "trialing");
+  assert.equal(mapStripeStatusFn("unpaid"), "expired");
+  assert.equal(mapStripeStatusFn("incomplete_expired"), "expired");
+  assert.equal(mapStripeStatusFn("incomplete"), "active");
+});
+
+// Mirror of src/lib/billing.ts sweepTrialExpiry date-comparison logic.
+function trialHasLapsed(trialEndsAt, now) {
+  return trialEndsAt.getTime() <= now.getTime();
+}
+test("trial expiry sweep: lapsed only strictly after (or at) trialEndsAt", () => {
+  const now = new Date("2026-07-09T00:00:00Z");
+  assert.equal(trialHasLapsed(new Date("2026-07-08T00:00:00Z"), now), true);
+  assert.equal(trialHasLapsed(new Date("2026-07-09T00:00:00Z"), now), true);
+  assert.equal(trialHasLapsed(new Date("2026-07-10T00:00:00Z"), now), false);
+});
+
+// Mirror of src/lib/plans.ts planPriceCents (annual = 10x monthly — ~2 months free).
+const PLAN_PRICE = {
+  starter: { monthly: 3900, annual: 39000 },
+  professional: { monthly: 14900, annual: 149000 },
+  business: { monthly: 39900, annual: 399000 },
+  enterprise: { monthly: 0, annual: 0 },
+};
+test("annual pricing is a 10x-monthly discount (2 months free)", () => {
+  assert.equal(PLAN_PRICE.professional.annual, PLAN_PRICE.professional.monthly * 10);
+  assert.ok(PLAN_PRICE.professional.annual < PLAN_PRICE.professional.monthly * 12);
+});

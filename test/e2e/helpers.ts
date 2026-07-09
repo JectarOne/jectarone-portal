@@ -53,6 +53,7 @@ export const USERS = {
   consultant: "consultant@northwind.test", // MEMBER / Security Analyst
   client: "client@northwind.test", // CLIENT read-only
   globexAdmin: "admin@globex.test", // other org
+  starterOwner: "owner@acme-starter.test", // OWNER, Starter plan, at its limits
 };
 
 /** Log in through the real UI and land on the dashboard. */
