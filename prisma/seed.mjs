@@ -113,6 +113,19 @@ async function main() {
       organizationId: starterOrg.id, name: `Starter Engagement ${i + 1}`, clientName: "Acme Starter Co", status: "Active",
     })),
   });
+  // …and at its finding limit (100) too, for the maxFindings-enforcement test.
+  await prisma.assessment.create({
+    data: {
+      id: "starter-assess", // stable id for E2E navigation
+      organizationId: starterOrg.id, clientName: "Acme Starter Co", type: "Web", status: "InProgress",
+    },
+  });
+  await prisma.finding.createMany({
+    data: Array.from({ length: 100 }, (_, i) => ({
+      organizationId: starterOrg.id, assessmentId: "starter-assess",
+      title: `Starter Finding ${i + 1}`, severity: "Low", status: "Open",
+    })),
+  });
   const currentPeriod = `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`;
   await prisma.usageCounter.create({ data: { organizationId: northwind.id, period: currentPeriod, aiRequests: 12, reportsGenerated: 2 } });
 

@@ -11,6 +11,8 @@ import { logActivity } from "@/lib/activity";
 import { computeDueDate } from "@/lib/sla";
 import { STATUS_TRANSITIONS, REVIEW_TRANSITIONS, label } from "@/lib/findings";
 import { diffFinding } from "@/lib/finding-diff";
+import { getOrCreateSubscription, effectivePlan } from "@/lib/billing";
+import { PLAN_LIMITS, underLimit, limitLabel } from "@/lib/plans";
 
 export type FindingState = { error?: string; fieldErrors?: Record<string, string> };
 
@@ -94,6 +96,13 @@ export async function createFindingAction(assessmentId: string, _prev: FindingSt
   if (!hasRole(session.role, "MEMBER")) return { error: "You do not have permission." };
   const assessment = await assessmentInOrg(assessmentId, session.orgId);
   if (!assessment) return { error: "Assessment not found." };
+
+  const sub = await getOrCreateSubscription(session.orgId);
+  const maxFindings = PLAN_LIMITS[effectivePlan(sub)].maxFindings;
+  const findingCount = await prisma.finding.count({ where: { organizationId: session.orgId, archivedAt: null } });
+  if (!underLimit(findingCount, maxFindings)) {
+    return { error: `Your plan allows ${limitLabel(maxFindings)} findings. Upgrade in Settings → Billing to create more.` };
+  }
 
   const parsed = findingSchema.safeParse(collect(formData));
   if (!parsed.success) return firstError(parsed.error);

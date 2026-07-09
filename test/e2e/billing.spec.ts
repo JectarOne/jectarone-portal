@@ -101,4 +101,14 @@ test.describe("plan limit enforcement", () => {
     await page.getByRole("button", { name: /create engagement/i }).click();
     await expect(page.getByText(/upgrade/i)).toBeVisible();
   });
+
+  // Regression (Sprint 19 audit): maxFindings was displayed on the billing page
+  // but never enforced — a Starter org could create unlimited findings.
+  test("Starter org at its finding limit cannot create another finding", async ({ page }) => {
+    await login(page, USERS.starterOwner); // already has 100/100 findings (Starter cap)
+    await page.goto("/dashboard/assessments/starter-assess/findings/new");
+    await page.getByLabel(/^title/i).fill("Finding 101");
+    await page.getByRole("button", { name: /save|create/i }).click();
+    await expect(page.getByText(/upgrade/i)).toBeVisible();
+  });
 });
