@@ -7,7 +7,7 @@ import { setSessionCookie, clearSessionCookie } from "@/lib/auth";
 import { signupSchema, loginSchema, slugify } from "@/lib/validation";
 import { loginThrottled, recordFailedLogin, clearLoginAttempts, ipThrottled, recordAttempt } from "@/lib/rate-limit";
 import { issueToken } from "@/lib/token";
-import { sendMail, verifyEmailTemplate, appUrl } from "@/lib/email";
+import { sendMail, verifyEmailTemplate, trialStartedTemplate, appUrl } from "@/lib/email";
 
 export type ActionState = { error?: string };
 
@@ -44,10 +44,17 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
   }
 
   const passwordHash = await hashPassword(password);
+  const trialEndsAt = new Date(Date.now() + 14 * 86_400_000);
 
   const membership = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({ data: { name, email, passwordHash } });
     const org = await tx.organization.create({ data: { name: organization, slug } });
+    // Every new organization starts on a 14-day full-featured (Professional
+    // tier) trial — see src/lib/billing.ts for the same defaults used when a
+    // subscription row is lazily provisioned for pre-existing organizations.
+    await tx.subscription.create({
+      data: { organizationId: org.id, plan: "professional", status: "trialing", trialEndsAt },
+    });
     return tx.membership.create({
       data: { userId: user.id, organizationId: org.id, role: "OWNER" },
     });
@@ -60,6 +67,9 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
     const tpl = verifyEmailTemplate(`${appUrl()}/verify-email?token=${raw}`);
     await sendMail({ ...tpl, to: email });
   } catch { /* logged by the mailer; surfaced via the resend page */ }
+  try {
+    await sendMail({ ...trialStartedTemplate(organization, trialEndsAt), to: email });
+  } catch { /* non-critical */ }
 
   await setSessionCookie({ uid: membership.userId, oid: membership.organizationId });
   redirect("/dashboard");

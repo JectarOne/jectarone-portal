@@ -8,6 +8,8 @@ import { severityCounts } from "@/lib/report";
 import { complete } from "@/lib/ai/provider";
 import { AI_CAPABILITIES, buildPrompt, type AiCapability } from "@/lib/ai/prompts";
 import { label } from "@/lib/findings";
+import { getOrCreateSubscription, hasAiCreditsRemaining, recordAiRequest, effectivePlan } from "@/lib/billing";
+import { PLAN_LIMITS } from "@/lib/plans";
 
 export type AiState = { text?: string; error?: string; refused?: boolean; provider?: string };
 
@@ -28,6 +30,14 @@ export async function aiAssistAction(_prev: AiState, fd: FormData): Promise<AiSt
 
   const capability = fd.get("capability");
   if (!isCapability(capability)) return { error: "Unknown capability." };
+
+  // Plan-gated AI credits — never trust a client-sent value, always re-check
+  // the org's live usage counter against its plan's monthly allowance.
+  const sub = await getOrCreateSubscription(session.orgId);
+  if (!(await hasAiCreditsRemaining(session.orgId, sub))) {
+    const limit = PLAN_LIMITS[effectivePlan(sub)].aiRequestsPerMonth;
+    return { error: `AI request limit reached for this month (${limit ?? 0} on your plan). Upgrade in Settings → Billing for more.` };
+  }
 
   const findingId = String(fd.get("findingId") ?? "");
   const assessmentId = String(fd.get("assessmentId") ?? "");
@@ -65,6 +75,12 @@ export async function aiAssistAction(_prev: AiState, fd: FormData): Promise<AiSt
 
   const { system, user, maxTokens } = buildPrompt(capability, ctx);
   const res = await complete({ system, user, maxTokens });
+
+  // Meter the request — it reached the provider regardless of outcome.
+  await recordAiRequest(session.orgId);
+  await prisma.aiUsageLog.create({
+    data: { organizationId: session.orgId, userId: session.userId, provider: res.provider, capability },
+  });
 
   if (res.refused) return { refused: true, provider: res.provider, error: "The AI provider declined this request." };
   if (!res.text) return { error: "No suggestion was returned. Check the AI provider configuration.", provider: res.provider };

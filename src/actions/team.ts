@@ -6,6 +6,8 @@ import { getSession } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
 import { hasRole, isRole } from "@/lib/rbac";
 import { inviteSchema } from "@/lib/validation";
+import { getOrCreateSubscription, effectivePlan } from "@/lib/billing";
+import { PLAN_LIMITS, underLimit, limitLabel } from "@/lib/plans";
 
 export type TeamState = { error?: string; ok?: string };
 
@@ -14,6 +16,13 @@ export async function addMemberAction(_prev: TeamState, formData: FormData): Pro
   const session = await getSession();
   if (!session) return { error: "Not authenticated." };
   if (!hasRole(session.role, "ADMIN")) return { error: "You do not have permission to add members." };
+
+  const sub = await getOrCreateSubscription(session.orgId);
+  const maxUsers = PLAN_LIMITS[effectivePlan(sub)].maxUsers;
+  const memberCount = await prisma.membership.count({ where: { organizationId: session.orgId } });
+  if (!underLimit(memberCount, maxUsers)) {
+    return { error: `Your plan allows ${limitLabel(maxUsers)} users. Upgrade in Settings → Billing to invite more.` };
+  }
 
   const parsed = inviteSchema.safeParse({
     name: formData.get("name"),
