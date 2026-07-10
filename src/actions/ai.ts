@@ -10,6 +10,7 @@ import { AI_CAPABILITIES, buildPrompt, type AiCapability } from "@/lib/ai/prompt
 import { label } from "@/lib/findings";
 import { getOrCreateSubscription, reserveAiRequest, releaseAiRequest, effectivePlan } from "@/lib/billing";
 import { PLAN_LIMITS } from "@/lib/plans";
+import { billingEnabled } from "@/lib/stripe";
 
 export type AiState = { text?: string; error?: string; refused?: boolean; provider?: string };
 
@@ -30,8 +31,6 @@ export async function aiAssistAction(_prev: AiState, fd: FormData): Promise<AiSt
 
   const capability = fd.get("capability");
   if (!isCapability(capability)) return { error: "Unknown capability." };
-
-  const sub = await getOrCreateSubscription(session.orgId);
 
   const findingId = String(fd.get("findingId") ?? "");
   const assessmentId = String(fd.get("assessmentId") ?? "");
@@ -72,9 +71,15 @@ export async function aiAssistAction(_prev: AiState, fd: FormData): Promise<AiSt
   // Plan-gated AI credits — never trust a client-sent value. The reservation
   // is a single conditional UPDATE (checked against the plan's monthly
   // allowance atomically), so concurrent requests can't overshoot the limit.
-  if (!(await reserveAiRequest(session.orgId, sub))) {
-    const limit = PLAN_LIMITS[effectivePlan(sub)].aiRequestsPerMonth;
-    return { error: `AI request limit reached for this month (${limit ?? 0} on your plan). Upgrade in Settings → Billing for more.` };
+  // Billing-disabled mode: no quota (nothing to upgrade to); AiUsageLog below
+  // still records every request.
+  const metered = billingEnabled();
+  if (metered) {
+    const sub = await getOrCreateSubscription(session.orgId);
+    if (!(await reserveAiRequest(session.orgId, sub))) {
+      const limit = PLAN_LIMITS[effectivePlan(sub)].aiRequestsPerMonth;
+      return { error: `AI request limit reached for this month (${limit ?? 0} on your plan). Upgrade in Settings → Billing for more.` };
+    }
   }
 
   // The credit is spent once the request reaches the provider, regardless of
@@ -83,7 +88,7 @@ export async function aiAssistAction(_prev: AiState, fd: FormData): Promise<AiSt
   try {
     res = await complete({ system, user, maxTokens });
   } catch (err) {
-    await releaseAiRequest(session.orgId);
+    if (metered) await releaseAiRequest(session.orgId);
     throw err;
   }
 

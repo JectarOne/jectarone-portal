@@ -9,6 +9,7 @@ import { loginThrottled, recordFailedLogin, clearLoginAttempts, ipThrottled, rec
 import { issueToken } from "@/lib/token";
 import { sendMail, verifyEmailTemplate, trialStartedTemplate, appUrl } from "@/lib/email";
 import { newTrialSubscriptionData } from "@/lib/billing";
+import { billingEnabled } from "@/lib/stripe";
 
 export type ActionState = { error?: string };
 
@@ -51,12 +52,18 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
     const org = await tx.organization.create({ data: { name: organization, slug } });
     // Every new organization starts on a 14-day full-featured (Professional
     // tier) trial — same defaults as the lazy provisioning path in billing.ts.
-    const trial = newTrialSubscriptionData(org.id);
-    await tx.subscription.create({ data: trial });
+    // Billing-disabled mode: no trials — orgs get one lazily if billing is
+    // enabled later (getOrCreateSubscription).
+    let trialEndsAt: Date | null = null;
+    if (billingEnabled()) {
+      const trial = newTrialSubscriptionData(org.id);
+      await tx.subscription.create({ data: trial });
+      trialEndsAt = trial.trialEndsAt;
+    }
     const membership = await tx.membership.create({
       data: { userId: user.id, organizationId: org.id, role: "OWNER" },
     });
-    return { membership, trialEndsAt: trial.trialEndsAt };
+    return { membership, trialEndsAt };
   });
 
   // Issue an email-verification token and send it. Failure to send must not
@@ -66,9 +73,11 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
     const tpl = verifyEmailTemplate(`${appUrl()}/verify-email?token=${raw}`);
     await sendMail({ ...tpl, to: email });
   } catch { /* logged by the mailer; surfaced via the resend page */ }
-  try {
-    await sendMail({ ...trialStartedTemplate(organization, trialEndsAt), to: email });
-  } catch { /* non-critical */ }
+  if (trialEndsAt) {
+    try {
+      await sendMail({ ...trialStartedTemplate(organization, trialEndsAt), to: email });
+    } catch { /* non-critical */ }
+  }
 
   await setSessionCookie({ uid: membership.userId, oid: membership.organizationId });
   redirect("/dashboard");

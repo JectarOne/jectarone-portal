@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { TrialBanner } from "@/components/trial-banner";
 import { hasRole } from "@/lib/rbac";
 import { getOrCreateSubscription, sweepTrialExpiry } from "@/lib/billing";
+import { billingEnabled } from "@/lib/stripe";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -15,8 +16,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // the 0003 migration; only new, unverified signups are redirected.
   if (!session.user.emailVerifiedAt) redirect("/verify-email");
 
-  await sweepTrialExpiry(session.orgId);
-  const subscription = await getOrCreateSubscription(session.orgId);
+  // Billing-disabled mode: no trial sweeps, no lazy subscription rows, no banner.
+  let subscription: { status: string; trialEndsAt: Date | null } | null = null;
+  if (billingEnabled()) {
+    await sweepTrialExpiry(session.orgId);
+    subscription = await getOrCreateSubscription(session.orgId);
+  }
 
   return (
     <div className="shell">
@@ -51,7 +56,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
       </aside>
       <main className="main" id="main">
-        <TrialBanner status={subscription.status} trialEndsAt={subscription.trialEndsAt} canManage={hasRole(session.role, "ADMIN")} />
+        {subscription && (
+          <TrialBanner status={subscription.status} trialEndsAt={subscription.trialEndsAt} canManage={hasRole(session.role, "ADMIN")} />
+        )}
         {children}
       </main>
     </div>

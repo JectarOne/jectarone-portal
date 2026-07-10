@@ -565,6 +565,20 @@ test("checkout stays open for trials, ended subscriptions, and orgs never on Str
   assert.equal(mustUsePortalFn({ stripeSubscriptionId: null, status: "active" }), false);
 });
 
+// Mirror of src/lib/stripe.ts billing-mode resolution: stripe (key set) >
+// mock (explicit BILLING_MODE=mock) > disabled (default). Disabled mode hides
+// billing UI, no-ops checkout actions, skips plan gates, and creates no trials
+// — the bare deploy must degrade gracefully, never error.
+const billingModeFn = (env) =>
+  env.STRIPE_SECRET_KEY ? "stripe" : env.BILLING_MODE === "mock" ? "mock" : "disabled";
+test("billing mode: Stripe keys win, mock needs the explicit flag, default is disabled", () => {
+  assert.equal(billingModeFn({ STRIPE_SECRET_KEY: "sk_test_1" }), "stripe");
+  assert.equal(billingModeFn({ STRIPE_SECRET_KEY: "sk_test_1", BILLING_MODE: "mock" }), "stripe");
+  assert.equal(billingModeFn({ BILLING_MODE: "mock" }), "mock");
+  assert.equal(billingModeFn({}), "disabled");
+  assert.equal(billingModeFn({ BILLING_MODE: "on" }), "disabled"); // only "mock" is recognized
+});
+
 // Mirror of src/lib/billing.ts storageAllows — the evidence-upload storage cap
 // (used + incoming must fit; null = unlimited). Regression: Sprint 19 audit —
 // storageBytes was displayed but never enforced.

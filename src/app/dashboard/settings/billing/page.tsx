@@ -4,7 +4,7 @@ import { hasRole } from "@/lib/rbac";
 import { prisma } from "@/lib/db";
 import { PLANS, PLAN_LIMITS, planLabel, planPriceCents, limitLabel, type Plan } from "@/lib/plans";
 import { getOrCreateSubscription, sweepTrialExpiry, effectivePlan, orgUsageSnapshot, getOrCreateUsageCounter } from "@/lib/billing";
-import { stripeConfigured } from "@/lib/stripe";
+import { stripeConfigured, billingEnabled } from "@/lib/stripe";
 import { cancelSubscriptionAction, resumeSubscriptionAction, openPortalAction } from "@/actions/billing";
 import { PlanCheckoutButton } from "./PlanCheckoutButton";
 
@@ -26,6 +26,20 @@ const STATUS_CLASS: Record<string, string> = {
 export default async function BillingPage() {
   const session = await getSession();
   if (!session) return null;
+
+  // Billing-disabled mode (no Stripe keys, no mock flag): a friendly notice
+  // instead of the plan picker — never an error, never a checkout entry point.
+  if (!billingEnabled()) {
+    return (
+      <div className="card" style={{ marginTop: "1rem" }}>
+        <h3 className="sub">Billing</h3>
+        <p><strong>Billing coming soon.</strong></p>
+        <p className="muted" style={{ fontSize: "0.85rem" }}>
+          Subscriptions are not available on this deployment yet — all features are currently included.
+        </p>
+      </div>
+    );
+  }
 
   await sweepTrialExpiry(session.orgId);
   const sub = await getOrCreateSubscription(session.orgId);

@@ -41,6 +41,9 @@ export default defineConfig({
       AUTH_SECRET,
       // Deterministic offline AI provider so the assistant is exercised without keys.
       AI_PROVIDER: "mock",
+      // Explicit mock billing (Stripe keys absent + no flag now means billing
+      // DISABLED, not mock) — the billing specs exercise the mock checkout flow.
+      BILLING_MODE: "mock",
       // S3/MinIO so the real presigned-upload path is exercised. If MinIO is not
       // running the upload spec skips (the app falls back to metadata-only mode).
       S3_BUCKET: S3.bucket,

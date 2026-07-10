@@ -7,6 +7,7 @@ import { hasRole } from "@/lib/rbac";
 import { logActivity } from "@/lib/activity";
 import { canRetestTransition, isRetestOpen, retestStatusLabel } from "@/lib/retest";
 import { getOrCreateSubscription, hasFeature } from "@/lib/billing";
+import { billingEnabled } from "@/lib/stripe";
 
 export type RetestState = { error?: string };
 
@@ -27,8 +28,10 @@ export async function requestRetestAction(findingId: string, _prev: RetestState,
   const session = await getSession();
   if (!session) return { error: "Not authenticated." };
   if (!hasRole(session.role, "MEMBER")) return { error: "You do not have permission." };
-  const sub = await getOrCreateSubscription(session.orgId);
-  if (!hasFeature(sub, "retest")) return { error: "Retesting requires the Professional plan or higher. Upgrade in Settings → Billing." };
+  if (billingEnabled()) {
+    const sub = await getOrCreateSubscription(session.orgId);
+    if (!hasFeature(sub, "retest")) return { error: "Retesting requires the Professional plan or higher. Upgrade in Settings → Billing." };
+  }
   const finding = await findingInOrg(findingId, session.orgId);
   if (!finding) return { error: "Finding not found." };
 

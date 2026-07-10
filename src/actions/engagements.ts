@@ -11,6 +11,7 @@ import { logActivity } from "@/lib/activity";
 import { canTransition, engagementStatusLabel } from "@/lib/engagements";
 import { getOrCreateSubscription, effectivePlan } from "@/lib/billing";
 import { PLAN_LIMITS, underLimit, limitLabel } from "@/lib/plans";
+import { billingEnabled } from "@/lib/stripe";
 
 export type EngagementState = { error?: string; fieldErrors?: Record<string, string> };
 
@@ -49,11 +50,13 @@ export async function createEngagementAction(_prev: EngagementState, fd: FormDat
   if (!session) return { error: "Not authenticated." };
   if (!hasRole(session.role, "MEMBER")) return { error: "You do not have permission." };
 
-  const sub = await getOrCreateSubscription(session.orgId);
-  const maxEngagements = PLAN_LIMITS[effectivePlan(sub)].maxEngagements;
-  const engagementCount = await prisma.engagement.count({ where: { organizationId: session.orgId, archivedAt: null } });
-  if (!underLimit(engagementCount, maxEngagements)) {
-    return { error: `Your plan allows ${limitLabel(maxEngagements)} engagements. Upgrade in Settings → Billing to create more.` };
+  if (billingEnabled()) {
+    const sub = await getOrCreateSubscription(session.orgId);
+    const maxEngagements = PLAN_LIMITS[effectivePlan(sub)].maxEngagements;
+    const engagementCount = await prisma.engagement.count({ where: { organizationId: session.orgId, archivedAt: null } });
+    if (!underLimit(engagementCount, maxEngagements)) {
+      return { error: `Your plan allows ${limitLabel(maxEngagements)} engagements. Upgrade in Settings → Billing to create more.` };
+    }
   }
 
   const parsed = engagementSchema.safeParse(collect(fd));

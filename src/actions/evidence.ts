@@ -9,11 +9,13 @@ import { logActivity } from "@/lib/activity";
 import { storageConfigured, presignUpload, evidenceKey, deleteObject, ALLOWED_EVIDENCE_TYPES, MAX_EVIDENCE_BYTES } from "@/lib/storage";
 import { getOrCreateSubscription, effectivePlan, orgStorageUsedBytes, storageAllows } from "@/lib/billing";
 import { PLAN_LIMITS } from "@/lib/plans";
+import { billingEnabled } from "@/lib/stripe";
 
 export type EvidenceState = { error?: string };
 
 /** Plan gate: would storing `incomingBytes` more evidence exceed the org's storage cap? */
 async function storageLimitError(orgId: string, incomingBytes: number): Promise<string | null> {
+  if (!billingEnabled()) return null; // billing-disabled mode: no plan caps
   const sub = await getOrCreateSubscription(orgId);
   const cap = PLAN_LIMITS[effectivePlan(sub)].storageBytes;
   if (storageAllows(await orgStorageUsedBytes(orgId), incomingBytes, cap)) return null;

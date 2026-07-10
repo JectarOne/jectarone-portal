@@ -7,6 +7,7 @@ import { getSession } from "@/lib/auth";
 import { hasRole } from "@/lib/rbac";
 import { logActivity } from "@/lib/activity";
 import { getOrCreateSubscription, hasFeature } from "@/lib/billing";
+import { billingEnabled } from "@/lib/stripe";
 
 export type TokenState = { error?: string; created?: string };
 
@@ -15,8 +16,10 @@ export async function createApiTokenAction(_prev: TokenState, fd: FormData): Pro
   const session = await getSession();
   if (!session) return { error: "Not authenticated." };
   if (!hasRole(session.role, "ADMIN")) return { error: "Only admins can create API tokens." };
-  const sub = await getOrCreateSubscription(session.orgId);
-  if (!hasFeature(sub, "api")) return { error: "API access requires the Professional plan or higher. Upgrade in Settings → Billing." };
+  if (billingEnabled()) {
+    const sub = await getOrCreateSubscription(session.orgId);
+    if (!hasFeature(sub, "api")) return { error: "API access requires the Professional plan or higher. Upgrade in Settings → Billing." };
+  }
   const name = String(fd.get("name") ?? "").trim().slice(0, 80) || "API token";
 
   const raw = `jo_${crypto.randomBytes(24).toString("base64url")}`;

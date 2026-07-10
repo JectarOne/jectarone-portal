@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { hasRole } from "@/lib/rbac";
 import { isPlan, type Plan } from "@/lib/plans";
-import { stripeConfigured, getStripe, priceIdFor } from "@/lib/stripe";
+import { stripeConfigured, billingEnabled, billingMockMode, getStripe, priceIdFor } from "@/lib/stripe";
 import { getOrCreateSubscription } from "@/lib/billing";
 import { applyCheckoutCompleted } from "@/lib/billing-sync";
 import { appUrl } from "@/lib/email";
@@ -29,13 +29,14 @@ export async function startCheckoutAction(_prev: BillingState, fd: FormData): Pr
   const session = await getSession();
   if (!session) return { error: "Not authenticated." };
   if (!hasRole(session.role, "ADMIN")) return { error: "Only admins can manage billing." };
+  if (!billingEnabled()) return { error: "Billing coming soon." };
 
   const plan = String(fd.get("plan") ?? "");
   const cycle = String(fd.get("cycle") ?? "monthly");
   if (!isPlan(plan) || plan === "enterprise") return { error: "Select a valid plan." };
   if (!isCycle(cycle)) return { error: "Invalid billing cycle." };
 
-  if (!stripeConfigured()) {
+  if (billingMockMode()) {
     redirect(`${BILLING_PATH}/mock-checkout?plan=${plan}&cycle=${cycle}`);
   }
 
@@ -74,7 +75,7 @@ export async function confirmMockCheckoutAction(_prev: BillingState, fd: FormDat
   const session = await getSession();
   if (!session) return { error: "Not authenticated." };
   if (!hasRole(session.role, "ADMIN")) return { error: "Only admins can manage billing." };
-  if (stripeConfigured()) return { error: "Mock checkout is disabled when Stripe is configured." };
+  if (!billingMockMode()) return { error: "Mock checkout is only available in mock billing mode." };
 
   const plan = String(fd.get("plan") ?? "");
   const cycle = String(fd.get("cycle") ?? "monthly");
@@ -95,7 +96,7 @@ export async function confirmMockCheckoutAction(_prev: BillingState, fd: FormDat
 export async function openPortalAction(): Promise<void> {
   const session = await getSession();
   if (!session || !hasRole(session.role, "ADMIN")) return;
-  if (!stripeConfigured()) redirect(BILLING_PATH); // mock mode: self-service buttons live on the billing page itself
+  if (!stripeConfigured()) redirect(BILLING_PATH); // mock/disabled: no Stripe-hosted portal exists
 
   const sub = await prisma.subscription.findUnique({ where: { organizationId: session.orgId } });
   if (!sub?.stripeCustomerId) redirect(BILLING_PATH);
@@ -112,6 +113,7 @@ export async function openPortalAction(): Promise<void> {
 export async function cancelSubscriptionAction(): Promise<void> {
   const session = await getSession();
   if (!session || !hasRole(session.role, "ADMIN")) return;
+  if (!billingEnabled()) return;
   const sub = await prisma.subscription.findUnique({ where: { organizationId: session.orgId } });
   if (!sub) return;
 
@@ -128,6 +130,7 @@ export async function cancelSubscriptionAction(): Promise<void> {
 export async function resumeSubscriptionAction(): Promise<void> {
   const session = await getSession();
   if (!session || !hasRole(session.role, "ADMIN")) return;
+  if (!billingEnabled()) return;
   const sub = await prisma.subscription.findUnique({ where: { organizationId: session.orgId } });
   if (!sub) return;
 

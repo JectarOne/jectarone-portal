@@ -6,6 +6,7 @@ import { prisma } from "./db";
 import { getSession, type Session } from "./auth";
 import { hasRole, type Role } from "./rbac";
 import { getOrCreateSubscription, hasFeature } from "./billing";
+import { billingEnabled } from "./stripe";
 
 /** Resolve an org API token from `Authorization: Bearer jo_…` into a Session. */
 async function sessionFromApiToken(): Promise<Session | null> {
@@ -38,9 +39,12 @@ export async function apiSession(): Promise<{ session: Session } | { response: N
   // Plan gate: API access is a plan feature, checked on every request — a token
   // minted while the org had the feature must stop working after a downgrade,
   // cancellation, or trial expiry (token *creation* alone can't enforce that).
-  const sub = await getOrCreateSubscription(tokenSession.orgId);
-  if (!hasFeature(sub, "api")) {
-    return { response: NextResponse.json({ error: "API access is not included in your current plan. Upgrade in Settings → Billing." }, { status: 403 }) };
+  // Billing-disabled mode: no plan gating, tokens work for everyone.
+  if (billingEnabled()) {
+    const sub = await getOrCreateSubscription(tokenSession.orgId);
+    if (!hasFeature(sub, "api")) {
+      return { response: NextResponse.json({ error: "API access is not included in your current plan. Upgrade in Settings → Billing." }, { status: 403 }) };
+    }
   }
   return { session: tokenSession };
 }

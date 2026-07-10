@@ -3,17 +3,18 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { hasRole } from "@/lib/rbac";
 import { isPlan, planLabel, planPriceCents } from "@/lib/plans";
-import { stripeConfigured } from "@/lib/stripe";
+import { billingMockMode } from "@/lib/stripe";
 import { MockCheckoutForm } from "./MockCheckoutForm";
 
 /**
- * Dev/CI stand-in for the real Stripe Checkout page — only reachable when
- * STRIPE_SECRET_KEY is unset. Lets the full upgrade flow be exercised offline
- * (local dev, CI) without a Stripe account, mirroring the AI mock-provider
- * pattern used elsewhere in this codebase.
+ * Dev/CI stand-in for the real Stripe Checkout page — only reachable in
+ * explicit mock billing mode (BILLING_MODE=mock, no Stripe keys). Lets the
+ * full upgrade flow be exercised offline (local dev, CI) without a Stripe
+ * account, mirroring the AI mock-provider pattern used elsewhere. Not
+ * reachable with real Stripe, nor when billing is disabled.
  */
 export default async function MockCheckoutPage({ searchParams }: { searchParams: Promise<{ plan?: string; cycle?: string }> }) {
-  if (stripeConfigured()) redirect("/dashboard/settings/billing");
+  if (!billingMockMode()) redirect("/dashboard/settings/billing");
   const session = await getSession();
   if (!session) return null;
   if (!hasRole(session.role, "ADMIN")) redirect("/dashboard/settings/billing");

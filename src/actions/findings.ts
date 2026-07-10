@@ -13,6 +13,7 @@ import { STATUS_TRANSITIONS, REVIEW_TRANSITIONS, label } from "@/lib/findings";
 import { diffFinding } from "@/lib/finding-diff";
 import { getOrCreateSubscription, effectivePlan } from "@/lib/billing";
 import { PLAN_LIMITS, underLimit, limitLabel } from "@/lib/plans";
+import { billingEnabled } from "@/lib/stripe";
 
 export type FindingState = { error?: string; fieldErrors?: Record<string, string> };
 
@@ -97,11 +98,13 @@ export async function createFindingAction(assessmentId: string, _prev: FindingSt
   const assessment = await assessmentInOrg(assessmentId, session.orgId);
   if (!assessment) return { error: "Assessment not found." };
 
-  const sub = await getOrCreateSubscription(session.orgId);
-  const maxFindings = PLAN_LIMITS[effectivePlan(sub)].maxFindings;
-  const findingCount = await prisma.finding.count({ where: { organizationId: session.orgId, archivedAt: null } });
-  if (!underLimit(findingCount, maxFindings)) {
-    return { error: `Your plan allows ${limitLabel(maxFindings)} findings. Upgrade in Settings → Billing to create more.` };
+  if (billingEnabled()) {
+    const sub = await getOrCreateSubscription(session.orgId);
+    const maxFindings = PLAN_LIMITS[effectivePlan(sub)].maxFindings;
+    const findingCount = await prisma.finding.count({ where: { organizationId: session.orgId, archivedAt: null } });
+    if (!underLimit(findingCount, maxFindings)) {
+      return { error: `Your plan allows ${limitLabel(maxFindings)} findings. Upgrade in Settings → Billing to create more.` };
+    }
   }
 
   const parsed = findingSchema.safeParse(collect(formData));

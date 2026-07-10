@@ -2,9 +2,27 @@ import "server-only";
 import type Stripe from "stripe";
 import { isPlan, type Plan } from "@/lib/plans";
 
-/** True when real Stripe keys are configured. False = dev/CI mock mode. */
+/** True when real Stripe keys are configured. */
 export function stripeConfigured(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY);
+}
+
+/** Dev/CI mock billing: no Stripe keys, but BILLING_MODE=mock is set
+ * explicitly (Playwright/local dev). Never active alongside real Stripe. */
+export function billingMockMode(): boolean {
+  return !stripeConfigured() && process.env.BILLING_MODE === "mock";
+}
+
+/**
+ * Billing runs in one of three modes:
+ *   stripe   — STRIPE_SECRET_KEY set: real Checkout/Portal/webhooks.
+ *   mock     — BILLING_MODE=mock: offline mock checkout (dev/CI).
+ *   disabled — neither: billing UI shows "coming soon", checkout actions
+ *              no-op, plan limits are not enforced, and no trials are
+ *              created. The app must degrade gracefully, never error.
+ */
+export function billingEnabled(): boolean {
+  return stripeConfigured() || billingMockMode();
 }
 
 let _client: Stripe | null = null;

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { PLAN_LIMITS, isPlan, hasPlan, type Plan, type PlanFeatures } from "@/lib/plans";
 import { sendMail, trialEndingTemplate } from "@/lib/email";
 import { logger } from "@/lib/logger";
+import { billingEnabled } from "@/lib/stripe";
 
 const TRIAL_DAYS = 14;
 
@@ -31,6 +32,7 @@ export async function getOrCreateSubscription(organizationId: string) {
  * pattern as reopenExpiredRiskAcceptances. Call on dashboard-scoped page loads.
  */
 export async function sweepTrialExpiry(organizationId: string): Promise<void> {
+  if (!billingEnabled()) return; // billing-disabled mode: trials don't run
   const sub = await prisma.subscription.findUnique({ where: { organizationId } });
   if (!sub || sub.status !== "trialing" || !sub.trialEndsAt) return;
   if (sub.trialEndsAt.getTime() > Date.now()) return;
@@ -109,6 +111,7 @@ const TRIAL_ENDING_WINDOW_DAYS = 3;
  * counts for the caller to log/report.
  */
 export async function sweepAllBillingNotifications(): Promise<{ expired: number; notified: number }> {
+  if (!billingEnabled()) return { expired: 0, notified: 0 }; // billing-disabled mode: nothing to sweep
   const now = new Date();
 
   const lapsed = await prisma.subscription.updateMany({
