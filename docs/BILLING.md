@@ -22,6 +22,25 @@ and how to operate it.
 - **`Invoice`** — local mirror of Stripe invoices, populated by the `invoice.payment_succeeded`
   webhook, for fast billing-page rendering without a live Stripe API call.
 
+## Billing modes
+
+Billing runs in one of three modes, resolved by `src/lib/stripe.ts`:
+
+| Mode | Condition | Behavior |
+|---|---|---|
+| `stripe` | `STRIPE_SECRET_KEY` set | Real Checkout/Portal/webhooks |
+| `mock` | `BILLING_MODE=mock`, no Stripe keys | Offline mock checkout (dev/CI) |
+| `disabled` | neither (default) | Billing hidden, gates open, no trials |
+
+**Disabled mode** (a bare deployment with no billing env) degrades gracefully:
+the Billing settings tab is hidden and the page shows a "Billing coming soon"
+notice; checkout/cancel/resume actions no-op; signup creates no trial and sends
+no trial email; the trial banner never renders; plan limits and feature gates
+are **not enforced** (features are free until billing ships — commercial gating
+with no way to pay would dead-end users); the cron sweep returns zeros. No code
+path throws. If billing is enabled later, orgs get a trial subscription lazily
+via `getOrCreateSubscription` on their next dashboard load.
+
 ## Source of truth — production vs. dev/CI
 
 **Production (Stripe configured):** the **only** code path that writes `Subscription`/`Invoice`
@@ -30,13 +49,15 @@ state is `src/app/api/webhooks/stripe/route.ts`, after Stripe signature verifica
 only *initiate* requests to Stripe (redirect to Checkout/Portal, or call the
 Subscriptions API for cancel/resume) — they never assign a plan themselves.
 
-**Dev/CI (`STRIPE_SECRET_KEY` unset):** there's no real Stripe to send webhooks, so
+**Dev/CI (`BILLING_MODE=mock`):** there's no real Stripe to send webhooks, so
 `confirmMockCheckoutAction` calls the *same* shared state-transition functions in
 `src/lib/billing-sync.ts` that the webhook calls — directly, server-side, gated by
 session + ADMIN role. The mock-checkout page (`/dashboard/settings/billing/mock-checkout`)
-redirects to `/dashboard/settings/billing` when Stripe **is** configured, so this
-path is structurally unreachable in a production deployment. This mirrors the
-AI-provider mock pattern (`src/lib/ai/provider.ts`) used elsewhere in the app.
+redirects to `/dashboard/settings/billing` unless explicit mock mode is active, so
+this path is unreachable both in a Stripe-configured deployment and in disabled
+mode. This mirrors the AI-provider mock pattern (`src/lib/ai/provider.ts`) used
+elsewhere in the app. The Playwright suite sets `BILLING_MODE=mock` in its
+webServer env (`playwright.config.ts`).
 
 ## Feature gating
 

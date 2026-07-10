@@ -1,5 +1,18 @@
 # Changelog — JectarOne Client Portal
 
+## Billing-disabled mode (2026-07-10)
+
+Billing now resolves to one of three modes (`src/lib/stripe.ts`): `stripe`
+(`STRIPE_SECRET_KEY` set), `mock` (explicit `BILLING_MODE=mock` — dev/CI;
+Playwright sets it), or `disabled` (neither — the new default for a bare
+deployment). Previously "no Stripe keys" silently meant mock mode, exposing the
+fake checkout on unconfigured deploys. In disabled mode: Billing tab hidden,
+billing page shows "Billing coming soon", checkout/cancel/resume actions no-op,
+no trials/trial banner/trial emails, plan limits and feature gates not enforced
+(features free until billing ships), cron sweep returns zeros — and nothing
+throws. Verified in-browser against a no-billing-env dev server; unit tests
+cover the mode matrix; E2E runs in explicit mock mode.
+
 ## Sprint 19 audit — billing hardening (2026-07-09)
 
 Full engineering audit of the Sprint 19 implementation. Architecture kept
