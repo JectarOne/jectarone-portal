@@ -31,7 +31,7 @@ jobs:
       DATABASE_URL: postgresql://portal:portal@localhost:5432/jectarone?schema=public
       AUTH_SECRET: ci-secret-not-used-for-anything-real-000000
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -67,7 +67,7 @@ jobs:
       S3_SECRET_ACCESS_KEY: minioadmin
       S3_ENDPOINT: http://localhost:9000
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 22
